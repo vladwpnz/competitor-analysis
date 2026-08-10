@@ -1,0 +1,436 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Services\CompetitorAnalysisService;
+use App\Services\GooglePlacesService;
+use App\Services\WebsiteScanner;
+use Mockery;
+use Tests\TestCase;
+
+class AnalysisFlowTest extends TestCase
+{
+    public function test_selected_google_business_runs_analysis_and_populates_step_two(): void
+    {
+        $websiteScan = [
+            'final_url' => 'https://acmeplumbing.com',
+            'status' => 200,
+            'title' => 'Acme Plumbing',
+            'meta_description'
+                => 'Emergency plumbing and drain cleaning.',
+            'h1' => [
+                'Professional Plumbing Services',
+            ],
+            'h2' => [
+                'Emergency Plumbing',
+                'Drain Cleaning',
+            ],
+            'text'
+                => 'Acme Plumbing provides emergency plumbing and drain cleaning.',
+        ];
+
+        $googlePlace = [
+            'id' => 'customer-place',
+
+            'displayName' => [
+                'text' => 'Acme Plumbing',
+                'languageCode' => 'en',
+            ],
+
+            'formattedAddress'
+                => '100 Main St, Toronto, ON',
+
+            'primaryType' => 'plumber',
+
+            'primaryTypeDisplayName' => [
+                'text' => 'Plumber',
+                'languageCode' => 'en',
+            ],
+
+            'types' => [
+                'plumber',
+            ],
+
+            'location' => [
+                'latitude' => 43.6532,
+                'longitude' => -79.3832,
+            ],
+
+            'businessStatus' => 'OPERATIONAL',
+
+            'pureServiceAreaBusiness' => false,
+
+            'websiteUri'
+                => 'https://acmeplumbing.com',
+
+            'googleMapsUri'
+                => 'https://maps.google.com/acme',
+
+            'rating' => 4.7,
+
+            'userRatingCount' => 140,
+        ];
+
+        $analysisResult = [
+            'business_profile' => [],
+
+            'classification' => [
+                'vertical' => 'home_services',
+                'market_scope' => 'local',
+            ],
+
+            'search_profile' => [
+                'business_type' => 'Plumber',
+            ],
+
+            'candidate_count' => 6,
+
+            'top_competitors' => [
+                [
+                    'id' => 'competitor-1',
+
+                    'displayName' => [
+                        'text' => 'Metro Plumbing',
+                    ],
+
+                    'primaryType' => 'plumber',
+
+                    '_relevance' => [
+                        'score' => 91.5,
+                        'quality' => 'high',
+                        'strong_match' => true,
+                    ],
+                ],
+            ],
+
+            'strong_match_count' => 1,
+            'has_competitors' => true,
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with('https://acmeplumbing.com')
+            ->andReturn($websiteScan);
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('getPlaceDetails')
+            ->once()
+            ->with('customer-place')
+            ->andReturn($googlePlace);
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis
+            ->shouldReceive('analyze')
+            ->once()
+            ->with(
+                $websiteScan,
+                $googlePlace
+            )
+            ->andReturn($analysisResult);
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this->post(
+            route('analysis.start'),
+            [
+                'website'
+                    => 'https://acmeplumbing.com',
+
+                'google_business'
+                    => 'Acme Plumbing',
+
+                'google_place_id'
+                    => 'customer-place',
+            ]
+        );
+
+        $response->assertRedirect(
+            route('competitors')
+        );
+
+        $response->assertSessionHas(
+            'analysis.website',
+            'https://acmeplumbing.com'
+        );
+
+        $response->assertSessionHas(
+            'analysis.google_business',
+            'Acme Plumbing'
+        );
+
+        $response->assertSessionHas(
+            'analysis.google_place_id',
+            'customer-place'
+        );
+
+        $response->assertSessionHas(
+            'analysis.website_scan',
+            $websiteScan
+        );
+
+        $response->assertSessionHas(
+            'analysis.google_place',
+            $googlePlace
+        );
+
+        $response->assertSessionHas(
+            'analysis.result',
+            $analysisResult
+        );
+
+        $page = $this->get(
+            route('competitors')
+        );
+
+        $page->assertOk();
+
+        $page->assertViewHas(
+            'topCompetitors',
+            function (array $competitors): bool {
+                return
+                    count($competitors) === 1
+                    && $competitors[0]['id']
+                        === 'competitor-1'
+                    && data_get(
+                        $competitors,
+                        '0._relevance.score'
+                    ) === 91.5;
+            }
+        );
+    }
+
+    public function test_website_only_flow_still_works_before_google_selector_is_connected(): void
+    {
+        $websiteScan = [
+            'final_url' => 'https://example.com',
+            'status' => 200,
+            'title' => 'Example Company',
+            'meta_description' => null,
+            'h1' => [
+                'Example Company',
+            ],
+            'h2' => [],
+            'text' => 'Example Company website.',
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with('https://example.com')
+            ->andReturn($websiteScan);
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'isConfigured'
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'getPlaceDetails'
+        );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis->shouldNotReceive(
+            'analyze'
+        );
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this->post(
+            route('analysis.start'),
+            [
+                'website'
+                    => 'https://example.com',
+
+                'google_business'
+                    => 'Example Business',
+            ]
+        );
+
+        $response->assertRedirect(
+            route('competitors')
+        );
+
+        $response->assertSessionHas(
+            'analysis.website_scan',
+            $websiteScan
+        );
+
+        /*
+         * Laravel's assertSessionHas() treats a null value as
+         * "missing", so for intentionally nullable session values
+         * we verify key existence and value separately.
+         */
+        $this->assertTrue(
+            session()->exists(
+                'analysis.google_place_id'
+            )
+        );
+
+        $this->assertNull(
+            session(
+                'analysis.google_place_id'
+            )
+        );
+
+        $this->assertTrue(
+            session()->exists(
+                'analysis.result'
+            )
+        );
+
+        $this->assertNull(
+            session(
+                'analysis.result'
+            )
+        );
+
+        $page = $this->get(
+            route('competitors')
+        );
+
+        $page->assertOk();
+
+        $page->assertViewHas(
+            'topCompetitors',
+            []
+        );
+    }
+
+    public function test_selected_google_business_requires_configured_places_api(): void
+    {
+        $websiteScan = [
+            'final_url' => 'https://example.com',
+            'status' => 200,
+            'title' => 'Example Company',
+            'meta_description' => null,
+            'h1' => [
+                'Example Company',
+            ],
+            'h2' => [],
+            'text' => 'Example Company website.',
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->andReturn($websiteScan);
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(false);
+
+        $googlePlaces->shouldNotReceive(
+            'getPlaceDetails'
+        );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis->shouldNotReceive(
+            'analyze'
+        );
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this->from(
+            route('home')
+        )->post(
+            route('analysis.start'),
+            [
+                'website'
+                    => 'https://example.com',
+
+                'google_business'
+                    => 'Example Business',
+
+                'google_place_id'
+                    => 'example-place',
+            ]
+        );
+
+        $response->assertRedirect(
+            route('home')
+        );
+
+        $response->assertSessionHasErrors([
+            'google_business'
+                => 'Google Business lookup is not configured yet.',
+        ]);
+    }
+}
