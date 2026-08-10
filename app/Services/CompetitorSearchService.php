@@ -2,8 +2,20 @@
 
 namespace App\Services;
 
+use InvalidArgumentException;
+
 class CompetitorSearchService
 {
+    public const STAGE_INITIAL = 'initial';
+
+    public const STAGE_LOCALITY = 'locality';
+
+    public const STAGE_REGION = 'region';
+
+    public const STAGE_COUNTRY = 'country';
+
+    public const STAGE_RELEVANCE = 'relevance';
+
     private const MAX_SEARCH_QUERIES = 4;
 
     private const RESULTS_PER_QUERY = 15;
@@ -17,13 +29,21 @@ class CompetitorSearchService
 
     public function findCandidates(
         array $searchProfile,
-        int $maxCandidates = 30
+        int $maxCandidates = 30,
+        string $stage = self::STAGE_INITIAL
     ): array {
+        $stage = $this->normalizeStage(
+            $stage
+        );
+
         $queries = $this->prepareQueries(
             data_get(
                 $searchProfile,
                 'search_queries',
                 []
+            ),
+            $this->queryLimitForStage(
+                $stage
             )
         );
 
@@ -55,38 +75,21 @@ class CompetitorSearchService
             'location.longitude'
         );
 
-        $useLocalSearch =
-            in_array(
-                $marketScope,
-                ['local', 'hybrid'],
-                true
-            )
-            && is_numeric($latitude)
-            && is_numeric($longitude);
-
         $pool = [];
 
         foreach ($queries as $query) {
-            if ($useLocalSearch) {
-                $places = $this->googlePlaces
-                    ->searchBusinessesNear(
-                        $query,
-                        (float) $latitude,
-                        (float) $longitude,
-                        50,
-                        self::RESULTS_PER_QUERY
-                    );
-
-                $searchMode = 'local_50km';
-            } else {
-                $places = $this->googlePlaces
-                    ->searchBusinesses(
-                        $query,
-                        self::RESULTS_PER_QUERY
-                    );
-
-                $searchMode = 'relevance';
-            }
+            [
+                $places,
+                $searchMode,
+                $executedQuery,
+            ] = $this->executeSearch(
+                $query,
+                $stage,
+                $marketScope,
+                $latitude,
+                $longitude,
+                $searchProfile
+            );
 
             foreach ($places as $place) {
                 if (! is_array($place)) {
@@ -115,6 +118,7 @@ class CompetitorSearchService
 
                     $pool[$key]['_match'] = [
                         'queries' => [],
+                        'executed_queries' => [],
                         'query_hits' => 0,
                         'search_modes' => [],
                         'distance_km'
@@ -135,6 +139,17 @@ class CompetitorSearchService
                 ) {
                     $pool[$key]['_match']['queries'][]
                         = $query;
+                }
+
+                if (
+                    ! in_array(
+                        $executedQuery,
+                        $pool[$key]['_match']['executed_queries'],
+                        true
+                    )
+                ) {
+                    $pool[$key]['_match']['executed_queries'][]
+                        = $executedQuery;
                 }
 
                 if (
@@ -217,7 +232,9 @@ class CompetitorSearchService
                     return -1;
                 }
 
-                return $leftDistance <=> $rightDistance;
+                return
+                    $leftDistance
+                    <=> $rightDistance;
             }
         );
 
@@ -228,12 +245,358 @@ class CompetitorSearchService
         );
     }
 
+    private function executeSearch(
+        string $query,
+        string $stage,
+        string $marketScope,
+        mixed $latitude,
+        mixed $longitude,
+        array $searchProfile
+    ): array {
+        $isLocalScope = in_array(
+            $marketScope,
+            [
+                'local',
+                'hybrid',
+            ],
+            true
+        );
+
+        $hasCoordinates =
+            is_numeric($latitude)
+            && is_numeric($longitude);
+
+        /*
+         * First pass for local/hybrid businesses:
+         * use Google's maximum supported circular
+         * location bias of 50 km.
+         */
+        if (
+            $stage === self::STAGE_INITIAL
+            && $isLocalScope
+            && $hasCoordinates
+        ) {
+            $places = $this->googlePlaces
+                ->searchBusinessesNear(
+                    $query,
+                    (float) $latitude,
+                    (float) $longitude,
+                    50,
+                    self::RESULTS_PER_QUERY
+                );
+
+            return [
+                $places,
+                'local_50km',
+                $query,
+            ];
+        }
+
+        /*
+         * Broader businesses are relevance-first.
+         * We intentionally do not force geographic
+         * expansion stages on them.
+         */
+        if (! $isLocalScope) {
+            $places = $this->googlePlaces
+                ->searchBusinesses(
+                    $query,
+                    self::RESULTS_PER_QUERY
+                );
+
+            return [
+                $places,
+                'relevance',
+                $query,
+            ];
+        }
+
+        /*
+         * A local/service-area business may occasionally
+         * have no usable coordinates. In that situation,
+         * the initial request can still use explicit
+         * locality context from its formatted address.
+         */
+        $effectiveStage = $stage;
+
+        if (
+            $stage === self::STAGE_INITIAL
+            && ! $hasCoordinates
+        ) {
+            $effectiveStage =
+                self::STAGE_LOCALITY;
+        }
+
+        $context = $this->geographicContext(
+            $searchProfile,
+            $effectiveStage
+        );
+
+        if ($context !== null) {
+            $executedQuery =
+                $this->buildContextualQuery(
+                    $query,
+                    $context
+                );
+
+            $places = $this->googlePlaces
+                ->searchBusinesses(
+                    $executedQuery,
+                    self::RESULTS_PER_QUERY
+                );
+
+            $searchMode = match (
+                $effectiveStage
+            ) {
+                self::STAGE_LOCALITY
+                    => 'locality_context',
+
+                self::STAGE_REGION
+                    => 'region_context',
+
+                self::STAGE_COUNTRY
+                    => 'country_context',
+
+                default
+                    => 'relevance_fallback',
+            };
+
+            return [
+                $places,
+                $searchMode,
+                $executedQuery,
+            ];
+        }
+
+        /*
+         * If the Google Place does not expose enough
+         * address information, fall back to relevance
+         * rather than constructing a fake location.
+         */
+        $places = $this->googlePlaces
+            ->searchBusinesses(
+                $query,
+                self::RESULTS_PER_QUERY
+            );
+
+        return [
+            $places,
+            $stage === self::STAGE_INITIAL
+                ? 'relevance'
+                : 'relevance_fallback',
+            $query,
+        ];
+    }
+
+    private function geographicContext(
+        array $searchProfile,
+        string $stage
+    ): ?string {
+        if ($stage === self::STAGE_RELEVANCE) {
+            return null;
+        }
+
+        $address = data_get(
+            $searchProfile,
+            'location.address'
+        );
+
+        if (
+            ! is_string($address)
+            || trim($address) === ''
+        ) {
+            return null;
+        }
+
+        $parts = preg_split(
+            '/\s*,\s*/u',
+            trim($address)
+        );
+
+        if (! is_array($parts)) {
+            return null;
+        }
+
+        $parts = array_values(
+            array_filter(
+                array_map(
+                    static fn (mixed $part): string =>
+                        is_string($part)
+                            ? trim($part)
+                            : '',
+                    $parts
+                ),
+                static fn (string $part): bool =>
+                    $part !== ''
+            )
+        );
+
+        if ($parts === []) {
+            return null;
+        }
+
+        $count = count(
+            $parts
+        );
+
+        $country =
+            $parts[$count - 1];
+
+        if ($stage === self::STAGE_COUNTRY) {
+            return $country;
+        }
+
+        if ($count === 1) {
+            return $country;
+        }
+
+        $region =
+            $parts[$count - 2];
+
+        if ($stage === self::STAGE_REGION) {
+            return $this->joinLocationParts([
+                $region,
+                $country,
+            ]);
+        }
+
+        /*
+         * Common Google formatted-address examples:
+         *
+         * 100 Main St, Toronto, ON, Canada
+         * Musterstraße 1, 10115 Berlin, Germany
+         *
+         * With four or more components, the third
+         * component from the end is normally the
+         * locality/city level we want.
+         *
+         * With three components, the second component
+         * from the end is the safest useful context.
+         */
+        $locality = $count >= 4
+            ? $parts[$count - 3]
+            : $region;
+
+        return $this->joinLocationParts([
+            $locality,
+            $region,
+            $country,
+        ]);
+    }
+
+    private function joinLocationParts(
+        array $parts
+    ): ?string {
+        $unique = [];
+
+        foreach ($parts as $part) {
+            if (
+                ! is_string($part)
+                || trim($part) === ''
+            ) {
+                continue;
+            }
+
+            $part = trim(
+                $part
+            );
+
+            $key = mb_strtolower(
+                $part
+            );
+
+            if (isset($unique[$key])) {
+                continue;
+            }
+
+            $unique[$key] = $part;
+        }
+
+        if ($unique === []) {
+            return null;
+        }
+
+        return implode(
+            ', ',
+            array_values($unique)
+        );
+    }
+
+    private function buildContextualQuery(
+        string $query,
+        string $context
+    ): string {
+        return trim(
+            $query
+            . ' in '
+            . $context
+        );
+    }
+
+    private function queryLimitForStage(
+        string $stage
+    ): int {
+        return match ($stage) {
+            self::STAGE_INITIAL
+                => self::MAX_SEARCH_QUERIES,
+
+            self::STAGE_LOCALITY
+                => 3,
+
+            self::STAGE_REGION
+                => 2,
+
+            self::STAGE_COUNTRY,
+            self::STAGE_RELEVANCE
+                => 1,
+        };
+    }
+
+    private function normalizeStage(
+        string $stage
+    ): string {
+        $stage = mb_strtolower(
+            trim($stage)
+        );
+
+        $allowed = [
+            self::STAGE_INITIAL,
+            self::STAGE_LOCALITY,
+            self::STAGE_REGION,
+            self::STAGE_COUNTRY,
+            self::STAGE_RELEVANCE,
+        ];
+
+        if (
+            ! in_array(
+                $stage,
+                $allowed,
+                true
+            )
+        ) {
+            throw new InvalidArgumentException(
+                'Unsupported competitor search stage.'
+            );
+        }
+
+        return $stage;
+    }
+
     private function prepareQueries(
-        mixed $queries
+        mixed $queries,
+        int $limit
     ): array {
         if (! is_array($queries)) {
             return [];
         }
+
+        $limit = max(
+            1,
+            min(
+                $limit,
+                self::MAX_SEARCH_QUERIES
+            )
+        );
 
         $prepared = [];
 
@@ -242,7 +605,9 @@ class CompetitorSearchService
                 continue;
             }
 
-            $query = trim($query);
+            $query = trim(
+                $query
+            );
 
             if ($query === '') {
                 continue;
@@ -260,7 +625,7 @@ class CompetitorSearchService
 
             if (
                 count($prepared)
-                >= self::MAX_SEARCH_QUERIES
+                >= $limit
             ) {
                 break;
             }
@@ -280,8 +645,8 @@ class CompetitorSearchService
             'exclude.place_id'
         );
 
-        $candidatePlaceId = $place['id']
-            ?? null;
+        $candidatePlaceId =
+            $place['id'] ?? null;
 
         if (
             is_string($excludedPlaceId)
@@ -318,8 +683,8 @@ class CompetitorSearchService
     private function candidateKey(
         array $place
     ): ?string {
-        $placeId = $place['id']
-            ?? null;
+        $placeId =
+            $place['id'] ?? null;
 
         if (
             is_string($placeId)
@@ -384,7 +749,9 @@ class CompetitorSearchService
             $value
         ) ?? $value;
 
-        $value = trim($value);
+        $value = trim(
+            $value
+        );
 
         return $value === ''
             ? null
