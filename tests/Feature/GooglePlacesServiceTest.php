@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Services\GooglePlacesService;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
+use InvalidArgumentException;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -16,25 +17,30 @@ class GooglePlacesServiceTest extends TestCase
             'services.google_places.key' => null,
         ]);
 
-        $service = app(GooglePlacesService::class);
+        $service = app(
+            GooglePlacesService::class
+        );
 
-        $this->assertFalse($service->isConfigured());
+        $this->assertFalse(
+            $service->isConfigured()
+        );
 
-        $this->expectException(RuntimeException::class);
+        $this->expectException(
+            RuntimeException::class
+        );
+
         $this->expectExceptionMessage(
             'Google Places API is not configured.'
         );
 
-        $service->searchBusinesses('test');
+        $service->searchBusinesses(
+            'test'
+        );
     }
 
     public function test_search_businesses_returns_places(): void
     {
-        config([
-            'services.google_places.key' => 'test-api-key',
-            'services.google_places.base_url'
-                => 'https://places.googleapis.com/v1',
-        ]);
+        $this->configureGoogle();
 
         Http::preventStrayRequests();
 
@@ -44,108 +50,270 @@ class GooglePlacesServiceTest extends TestCase
                     'places' => [
                         [
                             'id' => 'test-place-1',
+
                             'displayName' => [
-                                'text' => 'Acme Plumbing',
-                                'languageCode' => 'en',
+                                'text'
+                                    => 'Acme Plumbing',
+                                'languageCode'
+                                    => 'en',
                             ],
+
                             'formattedAddress'
                                 => '100 Main St, Example City',
-                            'primaryType' => 'plumber',
+
+                            'primaryType'
+                                => 'plumber',
+
                             'types' => [
                                 'plumber',
-                                'home_goods_store',
                             ],
-                            'location' => [
-                                'latitude' => 40.7128,
-                                'longitude' => -74.0060,
-                            ],
-                            'businessStatus'
-                                => 'OPERATIONAL',
-                            'pureServiceAreaBusiness'
-                                => false,
                         ],
                     ],
                 ], 200),
         ]);
 
-        $service = app(GooglePlacesService::class);
+        $service = app(
+            GooglePlacesService::class
+        );
 
         $places = $service->searchBusinesses(
             'plumber Example City',
             5
         );
 
-        $this->assertCount(1, $places);
+        $this->assertCount(
+            1,
+            $places
+        );
+
         $this->assertSame(
             'test-place-1',
             $places[0]['id']
         );
+
         $this->assertSame(
             'Acme Plumbing',
             $places[0]['displayName']['text']
         );
-        $this->assertSame(
-            'plumber',
-            $places[0]['primaryType']
+
+        Http::assertSent(
+            function (Request $request): bool {
+                return
+                    $request->url()
+                        === 'https://places.googleapis.com/v1/places:searchText'
+
+                    && $request->hasHeader(
+                        'X-Goog-Api-Key',
+                        'test-api-key'
+                    )
+
+                    && $request->hasHeader(
+                        'X-Goog-FieldMask'
+                    )
+
+                    && $request['textQuery']
+                        === 'plumber Example City'
+
+                    && $request['pageSize']
+                        === 5
+
+                    && $request[
+                        'includePureServiceAreaBusinesses'
+                    ] === true;
+            }
+        );
+    }
+
+    public function test_search_businesses_near_uses_location_bias(): void
+    {
+        $this->configureGoogle();
+
+        Http::preventStrayRequests();
+
+        Http::fake([
+            'https://places.googleapis.com/v1/places:searchText'
+                => Http::response([
+                    'places' => [
+                        [
+                            'id'
+                                => 'local-place-1',
+
+                            'displayName' => [
+                                'text'
+                                    => 'Toronto Plumbing Co.',
+                            ],
+
+                            'primaryType'
+                                => 'plumber',
+
+                            'location' => [
+                                'latitude'
+                                    => 43.6532,
+
+                                'longitude'
+                                    => -79.3832,
+                            ],
+                        ],
+                    ],
+                ], 200),
+        ]);
+
+        $service = app(
+            GooglePlacesService::class
         );
 
-        Http::assertSent(function (Request $request): bool {
-            return
-                $request->url()
-                    === 'https://places.googleapis.com/v1/places:searchText'
-                && $request->hasHeader(
-                    'X-Goog-Api-Key',
-                    'test-api-key'
-                )
-                && $request->hasHeader(
-                    'X-Goog-FieldMask'
-                )
-                && $request['textQuery']
-                    === 'plumber Example City'
-                && $request['pageSize'] === 5
-                && $request[
-                    'includePureServiceAreaBusinesses'
-                ] === true;
-        });
+        $places = $service->searchBusinessesNear(
+            'plumber',
+            43.6532,
+            -79.3832,
+            50,
+            12
+        );
+
+        $this->assertCount(
+            1,
+            $places
+        );
+
+        $this->assertSame(
+            'local-place-1',
+            $places[0]['id']
+        );
+
+        Http::assertSent(
+            function (Request $request): bool {
+                return
+                    $request['textQuery']
+                        === 'plumber'
+
+                    && $request['pageSize']
+                        === 12
+
+                    && $request['rankPreference']
+                        === 'RELEVANCE'
+
+                    && $request[
+                        'includePureServiceAreaBusinesses'
+                    ] === true
+
+                    && $request[
+                        'locationBias'
+                    ]['circle']['center']['latitude']
+                        === 43.6532
+
+                    && $request[
+                        'locationBias'
+                    ]['circle']['center']['longitude']
+                        === -79.3832
+
+                    && (float) $request[
+                        'locationBias'
+                    ]['circle']['radius']
+                        === 50000.0;
+            }
+        );
+    }
+
+    public function test_local_search_rejects_radius_above_google_limit(): void
+    {
+        $this->configureGoogle();
+
+        $service = app(
+            GooglePlacesService::class
+        );
+
+        $this->expectException(
+            InvalidArgumentException::class
+        );
+
+        $this->expectExceptionMessage(
+            'Google Places location bias radius must be greater than 0 and no more than 50 km.'
+        );
+
+        $service->searchBusinessesNear(
+            'plumber',
+            43.6532,
+            -79.3832,
+            100,
+            10
+        );
+    }
+
+    public function test_local_search_rejects_invalid_coordinates(): void
+    {
+        $this->configureGoogle();
+
+        $service = app(
+            GooglePlacesService::class
+        );
+
+        $this->expectException(
+            InvalidArgumentException::class
+        );
+
+        $service->searchBusinessesNear(
+            'plumber',
+            95.0,
+            -79.3832,
+            50,
+            10
+        );
     }
 
     public function test_place_details_returns_business_data(): void
     {
-        config([
-            'services.google_places.key' => 'test-api-key',
-            'services.google_places.base_url'
-                => 'https://places.googleapis.com/v1',
-        ]);
+        $this->configureGoogle();
 
         Http::preventStrayRequests();
 
         Http::fake([
             'https://places.googleapis.com/v1/places/test-place-1'
                 => Http::response([
-                    'id' => 'test-place-1',
+                    'id'
+                        => 'test-place-1',
+
                     'displayName' => [
-                        'text' => 'Acme Plumbing',
-                        'languageCode' => 'en',
+                        'text'
+                            => 'Acme Plumbing',
+                        'languageCode'
+                            => 'en',
                     ],
+
                     'formattedAddress'
                         => '100 Main St, Example City',
-                    'primaryType' => 'plumber',
+
+                    'primaryType'
+                        => 'plumber',
+
                     'types' => [
                         'plumber',
                     ],
+
                     'location' => [
-                        'latitude' => 40.7128,
-                        'longitude' => -74.0060,
+                        'latitude'
+                            => 40.7128,
+
+                        'longitude'
+                            => -74.0060,
                     ],
-                    'businessStatus' => 'OPERATIONAL',
+
+                    'businessStatus'
+                        => 'OPERATIONAL',
+
                     'websiteUri'
                         => 'https://example.test',
-                    'rating' => 4.8,
-                    'userRatingCount' => 127,
+
+                    'rating'
+                        => 4.8,
+
+                    'userRatingCount'
+                        => 127,
                 ], 200),
         ]);
 
-        $service = app(GooglePlacesService::class);
+        $service = app(
+            GooglePlacesService::class
+        );
 
         $place = $service->getPlaceDetails(
             'test-place-1'
@@ -155,30 +323,48 @@ class GooglePlacesServiceTest extends TestCase
             'test-place-1',
             $place['id']
         );
+
         $this->assertSame(
             'Acme Plumbing',
             $place['displayName']['text']
         );
+
         $this->assertSame(
             4.8,
             $place['rating']
         );
+
         $this->assertSame(
             127,
             $place['userRatingCount']
         );
 
-        Http::assertSent(function (Request $request): bool {
-            return
-                $request->url()
-                    === 'https://places.googleapis.com/v1/places/test-place-1'
-                && $request->hasHeader(
-                    'X-Goog-Api-Key',
-                    'test-api-key'
-                )
-                && $request->hasHeader(
-                    'X-Goog-FieldMask'
-                );
-        });
+        Http::assertSent(
+            function (Request $request): bool {
+                return
+                    $request->url()
+                        === 'https://places.googleapis.com/v1/places/test-place-1'
+
+                    && $request->hasHeader(
+                        'X-Goog-Api-Key',
+                        'test-api-key'
+                    )
+
+                    && $request->hasHeader(
+                        'X-Goog-FieldMask'
+                    );
+            }
+        );
+    }
+
+    private function configureGoogle(): void
+    {
+        config([
+            'services.google_places.key'
+                => 'test-api-key',
+
+            'services.google_places.base_url'
+                => 'https://places.googleapis.com/v1',
+        ]);
     }
 }
