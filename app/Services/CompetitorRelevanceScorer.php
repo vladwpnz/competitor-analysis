@@ -1,0 +1,675 @@
+<?php
+
+namespace App\Services;
+
+class CompetitorRelevanceScorer
+{
+    private const MAX_RANK_RESULTS = 20;
+
+    public function rank(
+        array $candidates,
+        array $searchProfile,
+        int $limit = 5
+    ): array {
+        $limit = max(
+            1,
+            min($limit, self::MAX_RANK_RESULTS)
+        );
+
+        $scored = [];
+
+        foreach ($candidates as $candidate) {
+            if (! is_array($candidate)) {
+                continue;
+            }
+
+            $candidate['_relevance'] = $this->score(
+                $candidate,
+                $searchProfile
+            );
+
+            $scored[] = $candidate;
+        }
+
+        usort(
+            $scored,
+            function (array $left, array $right): int {
+                $leftScore = (float) data_get(
+                    $left,
+                    '_relevance.score',
+                    0
+                );
+
+                $rightScore = (float) data_get(
+                    $right,
+                    '_relevance.score',
+                    0
+                );
+
+                if ($leftScore !== $rightScore) {
+                    return $rightScore <=> $leftScore;
+                }
+
+                $leftHits = (int) data_get(
+                    $left,
+                    '_match.query_hits',
+                    0
+                );
+
+                $rightHits = (int) data_get(
+                    $right,
+                    '_match.query_hits',
+                    0
+                );
+
+                if ($leftHits !== $rightHits) {
+                    return $rightHits <=> $leftHits;
+                }
+
+                return $this->compareDistance(
+                    data_get(
+                        $left,
+                        '_match.distance_km'
+                    ),
+                    data_get(
+                        $right,
+                        '_match.distance_km'
+                    )
+                );
+            }
+        );
+
+        return array_slice(
+            $scored,
+            0,
+            $limit
+        );
+    }
+
+    public function score(
+        array $candidate,
+        array $searchProfile
+    ): array {
+        $marketScope = (string) data_get(
+            $searchProfile,
+            'market_scope',
+            'hybrid'
+        );
+
+        $weights = $this->weights(
+            $marketScope
+        );
+
+        $typeRatio = $this->typeSimilarity(
+            $candidate,
+            $searchProfile
+        );
+
+        $queryRatio = $this->queryEvidence(
+            $candidate,
+            $searchProfile
+        );
+
+        $serviceRatio = $this->serviceEvidence(
+            $candidate,
+            $searchProfile
+        );
+
+        $distanceRatio = $this->distanceEvidence(
+            data_get(
+                $candidate,
+                '_match.distance_km'
+            ),
+            $marketScope
+        );
+
+        $breakdown = [
+            'business_type' => round(
+                $typeRatio * $weights['business_type'],
+                2
+            ),
+
+            'query_evidence' => round(
+                $queryRatio * $weights['query_evidence'],
+                2
+            ),
+
+            'service_evidence' => round(
+                $serviceRatio * $weights['service_evidence'],
+                2
+            ),
+
+            'distance' => round(
+                $distanceRatio * $weights['distance'],
+                2
+            ),
+        ];
+
+        $score = round(
+            array_sum($breakdown),
+            2
+        );
+
+        $score = max(
+            0,
+            min(100, $score)
+        );
+
+        return [
+            'score' => $score,
+
+            /*
+             * This is our own matching heuristic.
+             * It must not be presented to users as an exact
+             * mathematical percentage of business similarity.
+             */
+            'quality' => $this->quality(
+                $score
+            ),
+
+            'strong_match' => $score >= 70,
+
+            'breakdown' => $breakdown,
+
+            'evidence' => [
+                'query_hits' => (int) data_get(
+                    $candidate,
+                    '_match.query_hits',
+                    0
+                ),
+
+                'matched_queries' => data_get(
+                    $candidate,
+                    '_match.queries',
+                    []
+                ),
+
+                'distance_km' => data_get(
+                    $candidate,
+                    '_match.distance_km'
+                ),
+
+                'candidate_primary_type' => data_get(
+                    $candidate,
+                    'primaryType'
+                ),
+
+                'candidate_types' => data_get(
+                    $candidate,
+                    'types',
+                    []
+                ),
+            ],
+        ];
+    }
+
+    private function weights(
+        string $marketScope
+    ): array {
+        return match ($marketScope) {
+            'local' => [
+                'business_type' => 40,
+                'query_evidence' => 25,
+                'service_evidence' => 15,
+                'distance' => 20,
+            ],
+
+            'broader' => [
+                'business_type' => 50,
+                'query_evidence' => 35,
+                'service_evidence' => 15,
+                'distance' => 0,
+            ],
+
+            default => [
+                'business_type' => 45,
+                'query_evidence' => 30,
+                'service_evidence' => 15,
+                'distance' => 10,
+            ],
+        };
+    }
+
+    private function typeSimilarity(
+        array $candidate,
+        array $searchProfile
+    ): float {
+        $businessType = $this->normalizePhrase(
+            data_get(
+                $searchProfile,
+                'business_type'
+            )
+        );
+
+        if ($businessType === null) {
+            return 0.0;
+        }
+
+        $candidateTypes = [];
+
+        $primaryType = $this->normalizePhrase(
+            data_get(
+                $candidate,
+                'primaryType'
+            )
+        );
+
+        if ($primaryType !== null) {
+            $candidateTypes[] = $primaryType;
+        }
+
+        $primaryTypeName = $this->normalizePhrase(
+            data_get(
+                $candidate,
+                'primaryTypeDisplayName.text'
+            )
+        );
+
+        if ($primaryTypeName !== null) {
+            $candidateTypes[] = $primaryTypeName;
+        }
+
+        $types = data_get(
+            $candidate,
+            'types',
+            []
+        );
+
+        if (is_array($types)) {
+            foreach ($types as $type) {
+                $type = $this->normalizePhrase(
+                    $type
+                );
+
+                if ($type !== null) {
+                    $candidateTypes[] = $type;
+                }
+            }
+        }
+
+        $best = 0.0;
+
+        foreach (
+            array_unique($candidateTypes)
+            as $candidateType
+        ) {
+            if ($candidateType === $businessType) {
+                return 1.0;
+            }
+
+            if (
+                str_contains(
+                    $candidateType,
+                    $businessType
+                )
+                || str_contains(
+                    $businessType,
+                    $candidateType
+                )
+            ) {
+                $best = max(
+                    $best,
+                    0.9
+                );
+
+                continue;
+            }
+
+            $best = max(
+                $best,
+                $this->tokenSimilarity(
+                    $businessType,
+                    $candidateType
+                )
+            );
+        }
+
+        return min(
+            1.0,
+            $best
+        );
+    }
+
+    private function queryEvidence(
+        array $candidate,
+        array $searchProfile
+    ): float {
+        $hits = max(
+            0,
+            (int) data_get(
+                $candidate,
+                '_match.query_hits',
+                0
+            )
+        );
+
+        $queries = data_get(
+            $searchProfile,
+            'search_queries',
+            []
+        );
+
+        $queryCount = is_array($queries)
+            ? count($queries)
+            : 0;
+
+        /*
+         * CompetitorSearchService currently uses at most
+         * four queries, so score against that same effective set.
+         */
+        $effectiveQueries = max(
+            1,
+            min(4, $queryCount)
+        );
+
+        return min(
+            1.0,
+            $hits / $effectiveQueries
+        );
+    }
+
+    private function serviceEvidence(
+        array $candidate,
+        array $searchProfile
+    ): float {
+        $services = data_get(
+            $searchProfile,
+            'services',
+            []
+        );
+
+        if (! is_array($services) || $services === []) {
+            return 0.0;
+        }
+
+        $matchedQueries = data_get(
+            $candidate,
+            '_match.queries',
+            []
+        );
+
+        $matchedQueries = is_array($matchedQueries)
+            ? $matchedQueries
+            : [];
+
+        $candidateText = [
+            data_get(
+                $candidate,
+                'displayName.text'
+            ),
+
+            data_get(
+                $candidate,
+                'primaryType'
+            ),
+
+            data_get(
+                $candidate,
+                'primaryTypeDisplayName.text'
+            ),
+        ];
+
+        $candidateTypes = data_get(
+            $candidate,
+            'types',
+            []
+        );
+
+        if (is_array($candidateTypes)) {
+            $candidateText = array_merge(
+                $candidateText,
+                $candidateTypes
+            );
+        }
+
+        $candidateText = array_merge(
+            $candidateText,
+            $matchedQueries
+        );
+
+        $candidateHaystack = implode(
+            ' ',
+            array_filter(
+                array_map(
+                    fn ($value) => is_string($value)
+                        ? $value
+                        : '',
+                    $candidateText
+                )
+            )
+        );
+
+        $candidateHaystack = $this->normalizePhrase(
+            $candidateHaystack
+        );
+
+        if ($candidateHaystack === null) {
+            return 0.0;
+        }
+
+        $matched = 0;
+        $usableServices = 0;
+
+        foreach ($services as $service) {
+            $service = $this->normalizePhrase(
+                $service
+            );
+
+            if ($service === null) {
+                continue;
+            }
+
+            $usableServices++;
+
+            if (
+                str_contains(
+                    $candidateHaystack,
+                    $service
+                )
+            ) {
+                $matched++;
+
+                continue;
+            }
+
+            foreach ($matchedQueries as $query) {
+                $query = $this->normalizePhrase(
+                    $query
+                );
+
+                if ($query === null) {
+                    continue;
+                }
+
+                if (
+                    str_contains(
+                        $query,
+                        $service
+                    )
+                    || str_contains(
+                        $service,
+                        $query
+                    )
+                ) {
+                    $matched++;
+                    break;
+                }
+            }
+        }
+
+        if ($usableServices === 0) {
+            return 0.0;
+        }
+
+        return min(
+            1.0,
+            $matched / min(
+                $usableServices,
+                6
+            )
+        );
+    }
+
+    private function distanceEvidence(
+        mixed $distanceKm,
+        string $marketScope
+    ): float {
+        if ($marketScope === 'broader') {
+            return 1.0;
+        }
+
+        if (! is_numeric($distanceKm)) {
+            return 0.0;
+        }
+
+        $distanceKm = max(
+            0,
+            (float) $distanceKm
+        );
+
+        return match (true) {
+            $distanceKm <= 10 => 1.0,
+            $distanceKm <= 25 => 0.9,
+            $distanceKm <= 50 => 0.75,
+            $distanceKm <= 100 => 0.5,
+            $distanceKm <= 300 => 0.25,
+            default => 0.0,
+        };
+    }
+
+    private function tokenSimilarity(
+        string $left,
+        string $right
+    ): float {
+        $leftTokens = $this->tokens(
+            $left
+        );
+
+        $rightTokens = $this->tokens(
+            $right
+        );
+
+        if (
+            $leftTokens === []
+            || $rightTokens === []
+        ) {
+            return 0.0;
+        }
+
+        $intersection = array_intersect(
+            $leftTokens,
+            $rightTokens
+        );
+
+        $union = array_unique(
+            array_merge(
+                $leftTokens,
+                $rightTokens
+            )
+        );
+
+        if ($union === []) {
+            return 0.0;
+        }
+
+        return count($intersection)
+            / count($union);
+    }
+
+    private function tokens(
+        string $value
+    ): array {
+        $parts = preg_split(
+            '/\s+/u',
+            $value
+        );
+
+        if (! is_array($parts)) {
+            return [];
+        }
+
+        return array_values(
+            array_unique(
+                array_filter(
+                    $parts,
+                    fn ($token) =>
+                        is_string($token)
+                        && mb_strlen($token) >= 3
+                )
+            )
+        );
+    }
+
+    private function normalizePhrase(
+        mixed $value
+    ): ?string {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = mb_strtolower(
+            trim($value)
+        );
+
+        if ($value === '') {
+            return null;
+        }
+
+        $value = str_replace(
+            ['_', '-', '/', '\\'],
+            ' ',
+            $value
+        );
+
+        $value = preg_replace(
+            '/[^\p{L}\p{N}\s]+/u',
+            ' ',
+            $value
+        ) ?? $value;
+
+        $value = preg_replace(
+            '/\s+/u',
+            ' ',
+            $value
+        ) ?? $value;
+
+        $value = trim($value);
+
+        return $value === ''
+            ? null
+            : $value;
+    }
+
+    private function quality(
+        float $score
+    ): string {
+        return match (true) {
+            $score >= 70 => 'high',
+            $score >= 50 => 'medium',
+            default => 'low',
+        };
+    }
+
+    private function compareDistance(
+        mixed $left,
+        mixed $right
+    ): int {
+        if (
+            ! is_numeric($left)
+            && ! is_numeric($right)
+        ) {
+            return 0;
+        }
+
+        if (! is_numeric($left)) {
+            return 1;
+        }
+
+        if (! is_numeric($right)) {
+            return -1;
+        }
+
+        return (float) $left
+            <=> (float) $right;
+    }
+}
