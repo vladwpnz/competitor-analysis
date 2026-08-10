@@ -146,6 +146,13 @@
                                     value="{{ old('google_place_id') }}"
                                 >
 
+                                <input
+                                    id="google_places_session_token"
+                                    name="google_places_session_token"
+                                    type="hidden"
+                                    value="{{ old('google_places_session_token') }}"
+                                >
+
                                 <div
                                     id="google-business-suggestions"
                                     class="business-suggestions"
@@ -167,6 +174,12 @@
                             @enderror
 
                             @error('google_place_id')
+                                <div class="field-error">
+                                    {{ $message }}
+                                </div>
+                            @enderror
+
+                            @error('google_places_session_token')
                                 <div class="field-error">
                                     {{ $message }}
                                 </div>
@@ -227,7 +240,7 @@
         left: 0;
         right: 0;
         z-index: 50;
-        max-height: 320px;
+        max-height: 340px;
         overflow-y: auto;
         background: #ffffff;
         border: 1px solid rgba(25, 20, 45, 0.12);
@@ -283,6 +296,22 @@
         color: #777286;
     }
 
+    .google-maps-attribution {
+        display: flex;
+        justify-content: flex-end;
+        align-items: center;
+        min-height: 28px;
+        padding: 5px 12px 3px;
+        margin-top: 3px;
+        border-top: 1px solid rgba(25, 20, 45, 0.08);
+        font-family: Roboto, Arial, sans-serif;
+        font-size: 12px;
+        line-height: 1;
+        font-weight: 400;
+        color: #5e5e5e;
+        white-space: nowrap;
+    }
+
     .business-search-status {
         min-height: 18px;
         margin-top: 7px;
@@ -301,7 +330,7 @@
 
     @media (max-width: 767px) {
         .business-suggestions {
-            max-height: 260px;
+            max-height: 280px;
         }
 
         .business-suggestion {
@@ -312,7 +341,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
-    const form = document.getElementById('analysis-form');
+    const form = document.getElementById(
+        'analysis-form'
+    );
 
     const businessInput = document.getElementById(
         'google_business'
@@ -320,6 +351,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const placeIdInput = document.getElementById(
         'google_place_id'
+    );
+
+    const sessionTokenInput = document.getElementById(
+        'google_places_session_token'
     );
 
     const suggestionsBox = document.getElementById(
@@ -335,32 +370,115 @@ document.addEventListener('DOMContentLoaded', () => {
     );
 
     if (
-        !form ||
-        !businessInput ||
-        !placeIdInput ||
-        !suggestionsBox ||
-        !statusBox ||
-        !loader
+        !form
+        || !businessInput
+        || !placeIdInput
+        || !sessionTokenInput
+        || !suggestionsBox
+        || !statusBox
+        || !loader
     ) {
         return;
     }
 
-    const searchEndpoint = '/google-business/search';
+    const searchEndpoint =
+        @json(route('google-business.search'));
+
+    const uuidPattern =
+        /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
     let debounceTimer = null;
     let requestController = null;
     let suggestions = [];
     let activeIndex = -1;
 
-    /*
-     * If Laravel returned old input after validation,
-     * preserve the fact that this text belonged to the
-     * selected Place ID.
-     */
-    let selectedBusinessText =
+    const createSessionToken = () => {
+        if (
+            window.crypto
+            && typeof window.crypto.randomUUID
+                === 'function'
+        ) {
+            return window.crypto.randomUUID();
+        }
+
+        const bytes =
+            new Uint8Array(16);
+
+        window.crypto.getRandomValues(
+            bytes
+        );
+
+        bytes[6] =
+            (bytes[6] & 0x0f) | 0x40;
+
+        bytes[8] =
+            (bytes[8] & 0x3f) | 0x80;
+
+        const hex = Array.from(
+            bytes,
+            byte => byte
+                .toString(16)
+                .padStart(2, '0')
+        );
+
+        return [
+            hex.slice(0, 4).join(''),
+            hex.slice(4, 6).join(''),
+            hex.slice(6, 8).join(''),
+            hex.slice(8, 10).join(''),
+            hex.slice(10, 16).join(''),
+        ].join('-');
+    };
+
+    const getOrCreateSessionToken = () => {
+        const current =
+            sessionTokenInput.value.trim();
+
+        if (
+            current !== ''
+            && uuidPattern.test(current)
+        ) {
+            return current;
+        }
+
+        const token =
+            createSessionToken();
+
+        sessionTokenInput.value =
+            token;
+
+        return token;
+    };
+
+    const resetSelectedBusiness = () => {
+        placeIdInput.value = '';
+        sessionTokenInput.value = '';
+        selectedBusinessText = '';
+    };
+
+    const hasExistingSelection =
         placeIdInput.value.trim() !== ''
+        && uuidPattern.test(
+            sessionTokenInput.value.trim()
+        )
+        && businessInput.value.trim() !== '';
+
+    let selectedBusinessText =
+        hasExistingSelection
             ? businessInput.value.trim()
             : '';
+
+    if (!hasExistingSelection) {
+        placeIdInput.value = '';
+
+        if (
+            !uuidPattern.test(
+                sessionTokenInput.value.trim()
+            )
+        ) {
+            sessionTokenInput.value = '';
+        }
+    }
 
     const setExpanded = (expanded) => {
         businessInput.setAttribute(
@@ -380,7 +498,8 @@ document.addEventListener('DOMContentLoaded', () => {
         message = '',
         type = ''
     ) => {
-        statusBox.textContent = message;
+        statusBox.textContent =
+            message;
 
         statusBox.classList.remove(
             'is-selected',
@@ -410,15 +529,54 @@ document.addEventListener('DOMContentLoaded', () => {
         setExpanded(false);
     };
 
+    const appendGoogleMapsAttribution = () => {
+        const attribution =
+            document.createElement('div');
+
+        attribution.className =
+            'google-maps-attribution';
+
+        attribution.textContent =
+            'Google Maps';
+
+        attribution.setAttribute(
+            'translate',
+            'no'
+        );
+
+        attribution.setAttribute(
+            'aria-label',
+            'Google Maps'
+        );
+
+        suggestionsBox.appendChild(
+            attribution
+        );
+    };
+
     const selectBusiness = (suggestion) => {
+        const placeId =
+            suggestion.place_id || '';
+
+        if (placeId === '') {
+            return;
+        }
+
         businessInput.value =
             suggestion.full_text
             || suggestion.name
             || '';
 
         placeIdInput.value =
-            suggestion.place_id
-            || '';
+            placeId;
+
+        /*
+         * Do not create a new token here.
+         *
+         * The token that produced this prediction
+         * must also be sent to Place Details.
+         */
+        getOrCreateSessionToken();
 
         selectedBusinessText =
             businessInput.value.trim();
@@ -454,9 +612,10 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const renderSuggestions = (items) => {
-        suggestions = Array.isArray(items)
-            ? items
-            : [];
+        suggestions =
+            Array.isArray(items)
+                ? items
+                : [];
 
         activeIndex = -1;
 
@@ -464,6 +623,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (suggestions.length === 0) {
             suggestionsBox.hidden = true;
+
             setExpanded(false);
 
             setStatus(
@@ -481,6 +641,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     );
 
                 button.type = 'button';
+
                 button.className =
                     'business-suggestion';
 
@@ -505,13 +666,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     || suggestion.full_text
                     || 'Google Business';
 
-                button.appendChild(name);
+                button.appendChild(
+                    name
+                );
 
                 const secondaryText =
                     suggestion.secondary_text
                     || '';
 
-                if (secondaryText !== '') {
+                if (
+                    secondaryText !== ''
+                ) {
                     const secondary =
                         document.createElement(
                             'span'
@@ -530,11 +695,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 button.addEventListener(
                     'mousedown',
-                    (event) => {
-                        /*
-                         * Prevent the input blur event from
-                         * closing the dropdown before selection.
-                         */
+                    event => {
                         event.preventDefault();
                     }
                 );
@@ -554,7 +715,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         );
 
+        appendGoogleMapsAttribution();
+
         suggestionsBox.hidden = false;
+
         setExpanded(true);
 
         setStatus(
@@ -562,36 +726,54 @@ document.addEventListener('DOMContentLoaded', () => {
         );
     };
 
-    const searchBusinesses = async (query) => {
+    const searchBusinesses = async (
+        query,
+        sessionToken
+    ) => {
         if (requestController) {
             requestController.abort();
         }
 
-        requestController =
+        const controller =
             new AbortController();
+
+        requestController =
+            controller;
 
         showLoader(true);
 
         try {
-            const url =
-                searchEndpoint
-                + '?q='
-                + encodeURIComponent(query);
+            const parameters =
+                new URLSearchParams({
+                    q: query,
+                    session_token:
+                        sessionToken,
+                });
 
-            const response = await fetch(
-                url,
-                {
-                    method: 'GET',
-                    headers: {
-                        Accept: 'application/json',
-                    },
-                    signal:
-                        requestController.signal,
-                }
-            );
+            const response =
+                await fetch(
+                    searchEndpoint
+                        + '?'
+                        + parameters.toString(),
+                    {
+                        method: 'GET',
 
-            const data = await response.json()
-                .catch(() => ({}));
+                        headers: {
+                            Accept:
+                                'application/json',
+                        },
+
+                        signal:
+                            controller.signal,
+                    }
+                );
+
+            const data =
+                await response
+                    .json()
+                    .catch(
+                        () => ({})
+                    );
 
             if (!response.ok) {
                 throw new Error(
@@ -600,10 +782,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 );
             }
 
-            /*
-             * Ignore a response if the user has already
-             * changed the input while it was loading.
-             */
             if (
                 businessInput.value.trim()
                     !== query
@@ -616,7 +794,8 @@ document.addEventListener('DOMContentLoaded', () => {
             );
         } catch (error) {
             if (
-                error.name === 'AbortError'
+                error.name
+                    === 'AbortError'
             ) {
                 return;
             }
@@ -629,7 +808,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 'error'
             );
         } finally {
-            showLoader(false);
+            if (
+                requestController
+                    === controller
+            ) {
+                requestController =
+                    null;
+
+                showLoader(false);
+            }
         }
     };
 
@@ -640,15 +827,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 businessInput.value.trim();
 
             /*
-             * If the user edits the selected business,
-             * its old Place ID is no longer trustworthy.
+             * Editing a previously selected prediction
+             * invalidates both the Place ID and the
+             * completed Autocomplete session.
              */
             if (
                 selectedBusinessText !== ''
-                && query !== selectedBusinessText
+                && query
+                    !== selectedBusinessText
             ) {
-                placeIdInput.value = '';
-                selectedBusinessText = '';
+                resetSelectedBusiness();
 
                 setStatus('');
             }
@@ -659,10 +847,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
             closeSuggestions();
 
-            if (query.length < 2) {
-                if (query.length > 0) {
+            if (query.length < 3) {
+                if (
+                    query.length > 0
+                ) {
                     setStatus(
-                        'Type at least 2 characters to search.'
+                        'Type at least 3 characters to search.'
                     );
                 } else {
                     setStatus('');
@@ -671,24 +861,29 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
+            const sessionToken =
+                getOrCreateSessionToken();
+
             setStatus(
                 'Searching Google businesses...'
             );
 
-            debounceTimer = setTimeout(
-                () => {
-                    searchBusinesses(
-                        query
-                    );
-                },
-                300
-            );
+            debounceTimer =
+                setTimeout(
+                    () => {
+                        searchBusinesses(
+                            query,
+                            sessionToken
+                        );
+                    },
+                    300
+                );
         }
     );
 
     businessInput.addEventListener(
         'keydown',
-        (event) => {
+        event => {
             if (
                 suggestionsBox.hidden
                 || suggestions.length === 0
@@ -696,12 +891,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (event.key === 'ArrowDown') {
+            if (
+                event.key
+                    === 'ArrowDown'
+            ) {
                 event.preventDefault();
 
                 activeIndex =
                     activeIndex
-                    < suggestions.length - 1
+                        < suggestions.length - 1
                         ? activeIndex + 1
                         : 0;
 
@@ -710,7 +908,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (event.key === 'ArrowUp') {
+            if (
+                event.key
+                    === 'ArrowUp'
+            ) {
                 event.preventDefault();
 
                 activeIndex =
@@ -738,7 +939,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
 
-            if (event.key === 'Escape') {
+            if (
+                event.key
+                    === 'Escape'
+            ) {
                 closeSuggestions();
             }
         }
@@ -746,7 +950,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.addEventListener(
         'click',
-        (event) => {
+        event => {
             if (
                 !event.target.closest(
                     '#business-search-wrap'
@@ -757,29 +961,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     );
 
-    /*
-     * At this stage we intentionally do not hard-block
-     * submission when no Place ID exists.
-     *
-     * This preserves our temporary website-only flow
-     * until the real Google Places credentials are connected.
-     */
     form.addEventListener(
         'submit',
-        () => {
+        event => {
             clearTimeout(
                 debounceTimer
             );
 
             if (requestController) {
                 requestController.abort();
+
+                requestController = null;
+            }
+
+            showLoader(false);
+
+            /*
+             * A manually typed business is temporarily
+             * still allowed so the existing website-only
+             * development flow keeps working before live
+             * Google credentials are connected.
+             *
+             * If a Place ID exists, however, it must have
+             * the Autocomplete session that produced it.
+             */
+            if (
+                placeIdInput.value.trim() !== ''
+                && !uuidPattern.test(
+                    sessionTokenInput.value.trim()
+                )
+            ) {
+                event.preventDefault();
+
+                resetSelectedBusiness();
+
+                setStatus(
+                    'Please search for the business again and select it from the Google results.',
+                    'error'
+                );
             }
         }
     );
 
-    if (
-        placeIdInput.value.trim() !== ''
-    ) {
+    if (hasExistingSelection) {
         setStatus(
             '✓ Google Business selected',
             'selected'

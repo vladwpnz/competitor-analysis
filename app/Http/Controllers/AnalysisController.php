@@ -36,17 +36,16 @@ class AnalysisController extends Controller
                 'max:255',
             ],
 
-            /*
-             * This will be populated by the Google Business
-             * autocomplete/select flow.
-             *
-             * We keep it nullable for now so the current homepage
-             * still works before the live Places UI is connected.
-             */
             'google_place_id' => [
                 'nullable',
                 'string',
                 'max:255',
+            ],
+
+            'google_places_session_token' => [
+                'required_with:google_place_id',
+                'nullable',
+                'uuid',
             ],
         ]);
 
@@ -72,12 +71,20 @@ class AnalysisController extends Controller
             )
         );
 
+        $googlePlacesSessionToken = trim(
+            (string) (
+                $validated['google_places_session_token']
+                ?? ''
+            )
+        );
+
         /*
-         * Never guess which Google Business belongs to the user.
+         * Never guess which Google Business belongs
+         * to the user.
          *
-         * We only run the complete competitor pipeline after
-         * the user has explicitly selected a Google Place and
-         * we have its stable Place ID.
+         * The full analysis starts only after the user
+         * explicitly selects an Autocomplete prediction
+         * and we receive its stable Place ID.
          */
         if ($googlePlaceId !== '') {
             if (! $googlePlaces->isConfigured()) {
@@ -91,7 +98,8 @@ class AnalysisController extends Controller
 
             try {
                 $googlePlace = $googlePlaces->getPlaceDetails(
-                    $googlePlaceId
+                    $googlePlaceId,
+                    $googlePlacesSessionToken
                 );
 
                 $analysisResult = $competitorAnalysis->analyze(
@@ -118,6 +126,14 @@ class AnalysisController extends Controller
             'analysis.google_place_id'
                 => $googlePlaceId !== ''
                     ? $googlePlaceId
+                    : null,
+
+            'analysis.google_places_session_token'
+                => (
+                    $googlePlaceId !== ''
+                    && $googlePlacesSessionToken !== ''
+                )
+                    ? $googlePlacesSessionToken
                     : null,
 
             'analysis.website_scan'

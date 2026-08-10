@@ -12,19 +12,30 @@ class AnalysisFlowTest extends TestCase
 {
     public function test_selected_google_business_runs_analysis_and_populates_step_two(): void
     {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
         $websiteScan = [
-            'final_url' => 'https://acmeplumbing.com',
+            'final_url'
+                => 'https://acmeplumbing.com',
+
             'status' => 200,
-            'title' => 'Acme Plumbing',
+
+            'title'
+                => 'Acme Plumbing',
+
             'meta_description'
                 => 'Emergency plumbing and drain cleaning.',
+
             'h1' => [
                 'Professional Plumbing Services',
             ],
+
             'h2' => [
                 'Emergency Plumbing',
                 'Drain Cleaning',
             ],
+
             'text'
                 => 'Acme Plumbing provides emergency plumbing and drain cleaning.',
         ];
@@ -33,18 +44,25 @@ class AnalysisFlowTest extends TestCase
             'id' => 'customer-place',
 
             'displayName' => [
-                'text' => 'Acme Plumbing',
-                'languageCode' => 'en',
+                'text'
+                    => 'Acme Plumbing',
+
+                'languageCode'
+                    => 'en',
             ],
 
             'formattedAddress'
                 => '100 Main St, Toronto, ON',
 
-            'primaryType' => 'plumber',
+            'primaryType'
+                => 'plumber',
 
             'primaryTypeDisplayName' => [
-                'text' => 'Plumber',
-                'languageCode' => 'en',
+                'text'
+                    => 'Plumber',
+
+                'languageCode'
+                    => 'en',
             ],
 
             'types' => [
@@ -52,13 +70,18 @@ class AnalysisFlowTest extends TestCase
             ],
 
             'location' => [
-                'latitude' => 43.6532,
-                'longitude' => -79.3832,
+                'latitude'
+                    => 43.6532,
+
+                'longitude'
+                    => -79.3832,
             ],
 
-            'businessStatus' => 'OPERATIONAL',
+            'businessStatus'
+                => 'OPERATIONAL',
 
-            'pureServiceAreaBusiness' => false,
+            'pureServiceAreaBusiness'
+                => false,
 
             'websiteUri'
                 => 'https://acmeplumbing.com',
@@ -72,107 +95,150 @@ class AnalysisFlowTest extends TestCase
         ];
 
         $analysisResult = [
-            'business_profile' => [],
+            'business_profile'
+                => [],
 
             'classification' => [
-                'vertical' => 'home_services',
-                'market_scope' => 'local',
+                'vertical'
+                    => 'home_services',
+
+                'market_scope'
+                    => 'local',
             ],
 
             'search_profile' => [
-                'business_type' => 'Plumber',
+                'business_type'
+                    => 'Plumber',
             ],
 
-            'candidate_count' => 6,
+            'candidate_count'
+                => 6,
 
             'top_competitors' => [
                 [
-                    'id' => 'competitor-1',
+                    'id'
+                        => 'competitor-1',
 
                     'displayName' => [
-                        'text' => 'Metro Plumbing',
+                        'text'
+                            => 'Metro Plumbing',
                     ],
 
-                    'primaryType' => 'plumber',
+                    'primaryType'
+                        => 'plumber',
 
                     '_relevance' => [
-                        'score' => 91.5,
-                        'quality' => 'high',
-                        'strong_match' => true,
+                        'score'
+                            => 91.5,
+
+                        'quality'
+                            => 'high',
+
+                        'strong_match'
+                            => true,
                     ],
                 ],
             ],
 
-            'strong_match_count' => 1,
-            'has_competitors' => true,
+            'strong_match_count'
+                => 1,
+
+            'has_competitors'
+                => true,
         ];
 
-        $websiteScanner = Mockery::mock(
-            WebsiteScanner::class
-        );
+        $websiteScanner =
+            Mockery::mock(
+                WebsiteScanner::class
+            );
 
         $websiteScanner
             ->shouldReceive('scan')
             ->once()
-            ->with('https://acmeplumbing.com')
-            ->andReturn($websiteScan);
+            ->with(
+                'https://acmeplumbing.com'
+            )
+            ->andReturn(
+                $websiteScan
+            );
 
         $this->app->instance(
             WebsiteScanner::class,
             $websiteScanner
         );
 
-        $googlePlaces = Mockery::mock(
-            GooglePlacesService::class
-        );
+        $googlePlaces =
+            Mockery::mock(
+                GooglePlacesService::class
+            );
 
         $googlePlaces
-            ->shouldReceive('isConfigured')
+            ->shouldReceive(
+                'isConfigured'
+            )
             ->once()
             ->andReturn(true);
 
         $googlePlaces
-            ->shouldReceive('getPlaceDetails')
+            ->shouldReceive(
+                'getPlaceDetails'
+            )
             ->once()
-            ->with('customer-place')
-            ->andReturn($googlePlace);
+            ->with(
+                'customer-place',
+                $sessionToken
+            )
+            ->andReturn(
+                $googlePlace
+            );
 
         $this->app->instance(
             GooglePlacesService::class,
             $googlePlaces
         );
 
-        $competitorAnalysis = Mockery::mock(
-            CompetitorAnalysisService::class
-        );
+        $competitorAnalysis =
+            Mockery::mock(
+                CompetitorAnalysisService::class
+            );
 
         $competitorAnalysis
-            ->shouldReceive('analyze')
+            ->shouldReceive(
+                'analyze'
+            )
             ->once()
             ->with(
                 $websiteScan,
                 $googlePlace
             )
-            ->andReturn($analysisResult);
+            ->andReturn(
+                $analysisResult
+            );
 
         $this->app->instance(
             CompetitorAnalysisService::class,
             $competitorAnalysis
         );
 
-        $response = $this->post(
-            route('analysis.start'),
-            [
-                'website'
-                    => 'https://acmeplumbing.com',
+        $response =
+            $this->post(
+                route(
+                    'analysis.start'
+                ),
+                [
+                    'website'
+                        => 'https://acmeplumbing.com',
 
-                'google_business'
-                    => 'Acme Plumbing',
+                    'google_business'
+                        => 'Acme Plumbing',
 
-                'google_place_id'
-                    => 'customer-place',
-            ]
-        );
+                    'google_place_id'
+                        => 'customer-place',
+
+                    'google_places_session_token'
+                        => $sessionToken,
+                ]
+            );
 
         $response->assertRedirect(
             route('competitors')
@@ -194,6 +260,11 @@ class AnalysisFlowTest extends TestCase
         );
 
         $response->assertSessionHas(
+            'analysis.google_places_session_token',
+            $sessionToken
+        );
+
+        $response->assertSessionHas(
             'analysis.website_scan',
             $websiteScan
         );
@@ -208,17 +279,24 @@ class AnalysisFlowTest extends TestCase
             $analysisResult
         );
 
-        $page = $this->get(
-            route('competitors')
-        );
+        $page =
+            $this->get(
+                route(
+                    'competitors'
+                )
+            );
 
         $page->assertOk();
 
         $page->assertViewHas(
             'topCompetitors',
-            function (array $competitors): bool {
+            function (
+                array $competitors
+            ): bool {
                 return
-                    count($competitors) === 1
+                    count(
+                        $competitors
+                    ) === 1
                     && $competitors[0]['id']
                         === 'competitor-1'
                     && data_get(
@@ -232,35 +310,51 @@ class AnalysisFlowTest extends TestCase
     public function test_website_only_flow_still_works_before_google_selector_is_connected(): void
     {
         $websiteScan = [
-            'final_url' => 'https://example.com',
+            'final_url'
+                => 'https://example.com',
+
             'status' => 200,
-            'title' => 'Example Company',
-            'meta_description' => null,
+
+            'title'
+                => 'Example Company',
+
+            'meta_description'
+                => null,
+
             'h1' => [
                 'Example Company',
             ],
+
             'h2' => [],
-            'text' => 'Example Company website.',
+
+            'text'
+                => 'Example Company website.',
         ];
 
-        $websiteScanner = Mockery::mock(
-            WebsiteScanner::class
-        );
+        $websiteScanner =
+            Mockery::mock(
+                WebsiteScanner::class
+            );
 
         $websiteScanner
             ->shouldReceive('scan')
             ->once()
-            ->with('https://example.com')
-            ->andReturn($websiteScan);
+            ->with(
+                'https://example.com'
+            )
+            ->andReturn(
+                $websiteScan
+            );
 
         $this->app->instance(
             WebsiteScanner::class,
             $websiteScanner
         );
 
-        $googlePlaces = Mockery::mock(
-            GooglePlacesService::class
-        );
+        $googlePlaces =
+            Mockery::mock(
+                GooglePlacesService::class
+            );
 
         $googlePlaces->shouldNotReceive(
             'isConfigured'
@@ -275,9 +369,10 @@ class AnalysisFlowTest extends TestCase
             $googlePlaces
         );
 
-        $competitorAnalysis = Mockery::mock(
-            CompetitorAnalysisService::class
-        );
+        $competitorAnalysis =
+            Mockery::mock(
+                CompetitorAnalysisService::class
+            );
 
         $competitorAnalysis->shouldNotReceive(
             'analyze'
@@ -288,16 +383,19 @@ class AnalysisFlowTest extends TestCase
             $competitorAnalysis
         );
 
-        $response = $this->post(
-            route('analysis.start'),
-            [
-                'website'
-                    => 'https://example.com',
+        $response =
+            $this->post(
+                route(
+                    'analysis.start'
+                ),
+                [
+                    'website'
+                        => 'https://example.com',
 
-                'google_business'
-                    => 'Example Business',
-            ]
-        );
+                    'google_business'
+                        => 'Example Business',
+                ]
+            );
 
         $response->assertRedirect(
             route('competitors')
@@ -308,11 +406,6 @@ class AnalysisFlowTest extends TestCase
             $websiteScan
         );
 
-        /*
-         * Laravel's assertSessionHas() treats a null value as
-         * "missing", so for intentionally nullable session values
-         * we verify key existence and value separately.
-         */
         $this->assertTrue(
             session()->exists(
                 'analysis.google_place_id'
@@ -322,6 +415,18 @@ class AnalysisFlowTest extends TestCase
         $this->assertNull(
             session(
                 'analysis.google_place_id'
+            )
+        );
+
+        $this->assertTrue(
+            session()->exists(
+                'analysis.google_places_session_token'
+            )
+        );
+
+        $this->assertNull(
+            session(
+                'analysis.google_places_session_token'
             )
         );
 
@@ -337,9 +442,12 @@ class AnalysisFlowTest extends TestCase
             )
         );
 
-        $page = $this->get(
-            route('competitors')
-        );
+        $page =
+            $this->get(
+                route(
+                    'competitors'
+                )
+            );
 
         $page->assertOk();
 
@@ -351,38 +459,57 @@ class AnalysisFlowTest extends TestCase
 
     public function test_selected_google_business_requires_configured_places_api(): void
     {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
         $websiteScan = [
-            'final_url' => 'https://example.com',
+            'final_url'
+                => 'https://example.com',
+
             'status' => 200,
-            'title' => 'Example Company',
-            'meta_description' => null,
+
+            'title'
+                => 'Example Company',
+
+            'meta_description'
+                => null,
+
             'h1' => [
                 'Example Company',
             ],
+
             'h2' => [],
-            'text' => 'Example Company website.',
+
+            'text'
+                => 'Example Company website.',
         ];
 
-        $websiteScanner = Mockery::mock(
-            WebsiteScanner::class
-        );
+        $websiteScanner =
+            Mockery::mock(
+                WebsiteScanner::class
+            );
 
         $websiteScanner
             ->shouldReceive('scan')
             ->once()
-            ->andReturn($websiteScan);
+            ->andReturn(
+                $websiteScan
+            );
 
         $this->app->instance(
             WebsiteScanner::class,
             $websiteScanner
         );
 
-        $googlePlaces = Mockery::mock(
-            GooglePlacesService::class
-        );
+        $googlePlaces =
+            Mockery::mock(
+                GooglePlacesService::class
+            );
 
         $googlePlaces
-            ->shouldReceive('isConfigured')
+            ->shouldReceive(
+                'isConfigured'
+            )
             ->once()
             ->andReturn(false);
 
@@ -395,9 +522,10 @@ class AnalysisFlowTest extends TestCase
             $googlePlaces
         );
 
-        $competitorAnalysis = Mockery::mock(
-            CompetitorAnalysisService::class
-        );
+        $competitorAnalysis =
+            Mockery::mock(
+                CompetitorAnalysisService::class
+            );
 
         $competitorAnalysis->shouldNotReceive(
             'analyze'
@@ -408,21 +536,27 @@ class AnalysisFlowTest extends TestCase
             $competitorAnalysis
         );
 
-        $response = $this->from(
-            route('home')
-        )->post(
-            route('analysis.start'),
-            [
-                'website'
-                    => 'https://example.com',
+        $response =
+            $this->from(
+                route('home')
+            )->post(
+                route(
+                    'analysis.start'
+                ),
+                [
+                    'website'
+                        => 'https://example.com',
 
-                'google_business'
-                    => 'Example Business',
+                    'google_business'
+                        => 'Example Business',
 
-                'google_place_id'
-                    => 'example-place',
-            ]
-        );
+                    'google_place_id'
+                        => 'example-place',
+
+                    'google_places_session_token'
+                        => $sessionToken,
+                ]
+            );
 
         $response->assertRedirect(
             route('home')
@@ -431,6 +565,36 @@ class AnalysisFlowTest extends TestCase
         $response->assertSessionHasErrors([
             'google_business'
                 => 'Google Business lookup is not configured yet.',
+        ]);
+    }
+
+    public function test_selected_google_business_requires_autocomplete_session_token(): void
+    {
+        $response =
+            $this->from(
+                route('home')
+            )->post(
+                route(
+                    'analysis.start'
+                ),
+                [
+                    'website'
+                        => 'https://example.com',
+
+                    'google_business'
+                        => 'Example Business',
+
+                    'google_place_id'
+                        => 'example-place',
+                ]
+            );
+
+        $response->assertRedirect(
+            route('home')
+        );
+
+        $response->assertSessionHasErrors([
+            'google_places_session_token',
         ]);
     }
 }
