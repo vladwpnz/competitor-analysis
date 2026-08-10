@@ -140,7 +140,7 @@
 
                     <div class="hero-trust">
                         <span>✓ No credit card required</span>
-                        <span>✓ Get results in seconds</span>
+                        <span>✓ Website scan included</span>
                         <span>✓ Free initial analysis</span>
                     </div>
 

@@ -22,7 +22,9 @@
             </nav>
 
             <div class="header-actions">
-                <a href="#" class="login-link">Log in</a>
+                <a href="#" class="login-link">
+                    Log in
+                </a>
 
                 <a href="{{ route('home') }}#analysis-form" class="trial-button">
                     Start Free Analysis
@@ -35,6 +37,7 @@
     <main class="competitors-page">
 
         <section class="competitors-hero">
+
             <div class="container competitors-container">
 
                 <div class="step-badge">
@@ -121,6 +124,54 @@
                         incorrect.
                     </div>
 
+                    <div class="website-signals">
+
+                        <div class="website-signals-heading">
+                            <span class="section-kicker">
+                                WEBSITE SCAN
+                            </span>
+
+                            <h3>
+                                Detected Website Signals
+                            </h3>
+                        </div>
+
+                        <div class="website-signals-grid">
+
+                            <div class="website-signal">
+                                <span>
+                                    Page Title
+                                </span>
+
+                                <strong>
+                                    {{ $websiteScan['title'] ?? 'Not detected' }}
+                                </strong>
+                            </div>
+
+                            <div class="website-signal">
+                                <span>
+                                    Meta Description
+                                </span>
+
+                                <strong>
+                                    {{ $websiteScan['meta_description'] ?? 'Not detected' }}
+                                </strong>
+                            </div>
+
+                            <div class="website-signal website-signal-wide">
+                                <span>
+                                    Main Heading
+                                </span>
+
+                                <strong>
+                                    {{ $websiteScan['h1'][0] ?? 'Not detected' }}
+                                </strong>
+                            </div>
+
+                        </div>
+
+                    </div>
+
                 </section>
 
                 <section class="competitor-review-card">
@@ -173,6 +224,7 @@
                 </section>
 
             </div>
+
         </section>
 
     </main>
