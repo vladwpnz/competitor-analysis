@@ -59,13 +59,11 @@ class GooglePlacesService
             'places:searchText',
             self::SEARCH_FIELD_MASK,
             [
-                'textQuery' => $query,
-                'maxResultCount' => $maxResults,
+    'textQuery' => $query,
+    'pageSize' => $maxResults,
 
-                // Important for plumbers, electricians and other
-                // businesses that may not publish a physical address.
-                'includePureServiceAreaBusinesses' => true,
-            ]
+    'includePureServiceAreaBusinesses' => true,
+]
         );
 
         return $response->json('places', []);

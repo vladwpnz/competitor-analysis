@@ -102,7 +102,7 @@ class GooglePlacesServiceTest extends TestCase
                 )
                 && $request['textQuery']
                     === 'plumber Example City'
-                && $request['maxResultCount'] === 5
+                && $request['pageSize'] === 5
                 && $request[
                     'includePureServiceAreaBusinesses'
                 ] === true;
