@@ -13,7 +13,8 @@ class CompetitorAnalysisService
         private readonly BusinessClassifier $businessClassifier,
         private readonly SearchProfileBuilder $searchProfileBuilder,
         private readonly CompetitorSearchService $competitorSearchService,
-        private readonly CompetitorRelevanceScorer $relevanceScorer
+        private readonly CompetitorRelevanceScorer $relevanceScorer,
+        private readonly CompetitorEnrichmentService $competitorEnrichmentService
     ) {
     }
 
@@ -76,6 +77,10 @@ class CompetitorAnalysisService
                 break;
             }
         }
+
+        $topCompetitors = $this->competitorEnrichmentService->enrich(
+            $topCompetitors
+        );
 
         return [
             'business_profile' => $businessProfile,

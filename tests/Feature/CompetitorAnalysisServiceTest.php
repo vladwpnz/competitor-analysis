@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Services\BusinessClassifier;
 use App\Services\BusinessProfileBuilder;
 use App\Services\CompetitorAnalysisService;
+use App\Services\CompetitorEnrichmentService;
 use App\Services\CompetitorRelevanceScorer;
 use App\Services\CompetitorSearchService;
 use App\Services\SearchProfileBuilder;
@@ -373,12 +374,25 @@ class CompetitorAnalysisServiceTest extends TestCase
     private function service(
         CompetitorSearchService $competitorSearch
     ): CompetitorAnalysisService {
+        $competitorEnrichment = Mockery::mock(
+            CompetitorEnrichmentService::class
+        );
+
+        $competitorEnrichment
+            ->shouldReceive('enrich')
+            ->once()
+            ->with(Mockery::type('array'))
+            ->andReturnUsing(
+                static fn (array $competitors): array => $competitors
+            );
+
         return new CompetitorAnalysisService(
             app(BusinessProfileBuilder::class),
             app(BusinessClassifier::class),
             app(SearchProfileBuilder::class),
             $competitorSearch,
-            app(CompetitorRelevanceScorer::class)
+            app(CompetitorRelevanceScorer::class),
+            $competitorEnrichment
         );
     }
 

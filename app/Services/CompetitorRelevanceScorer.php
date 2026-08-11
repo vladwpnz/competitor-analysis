@@ -34,6 +34,22 @@ class CompetitorRelevanceScorer
         usort(
             $scored,
             function (array $left, array $right): int {
+                $leftCompatible = (bool) data_get(
+                    $left,
+                    '_relevance.type_compatible',
+                    false
+                );
+
+                $rightCompatible = (bool) data_get(
+                    $right,
+                    '_relevance.type_compatible',
+                    false
+                );
+
+                if ($leftCompatible !== $rightCompatible) {
+                    return $rightCompatible <=> $leftCompatible;
+                }
+
                 $leftScore = (float) data_get(
                     $left,
                     '_relevance.score',
@@ -155,6 +171,17 @@ class CompetitorRelevanceScorer
             min(100, $score)
         );
 
+        /*
+         * Query hits alone are not enough to make a local business
+         * a strong competitor. Google can return adjacent categories
+         * for a relevant query, so require intrinsic category/service
+         * evidence for local markets.
+         */
+        $typeCompatible =
+            $marketScope !== 'local'
+            || $typeRatio >= 0.45
+            || $serviceRatio >= 0.15;
+
         return [
             'score' => $score,
 
@@ -167,7 +194,11 @@ class CompetitorRelevanceScorer
                 $score
             ),
 
-            'strong_match' => $score >= 70,
+            'strong_match' =>
+                $score >= 70
+                && $typeCompatible,
+
+            'type_compatible' => $typeCompatible,
 
             'breakdown' => $breakdown,
 
@@ -422,11 +453,11 @@ class CompetitorRelevanceScorer
             );
         }
 
-        $candidateText = array_merge(
-            $candidateText,
-            $matchedQueries
-        );
-
+        /*
+         * Do not include matched search queries here.
+         * A business appearing for "plumber" does not prove that
+         * the business itself is a plumber.
+         */
         $candidateHaystack = implode(
             ' ',
             array_filter(
@@ -472,29 +503,6 @@ class CompetitorRelevanceScorer
                 continue;
             }
 
-            foreach ($matchedQueries as $query) {
-                $query = $this->normalizePhrase(
-                    $query
-                );
-
-                if ($query === null) {
-                    continue;
-                }
-
-                if (
-                    str_contains(
-                        $query,
-                        $service
-                    )
-                    || str_contains(
-                        $service,
-                        $query
-                    )
-                ) {
-                    $matched++;
-                    break;
-                }
-            }
         }
 
         if ($usableServices === 0) {
