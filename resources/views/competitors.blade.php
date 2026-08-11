@@ -21,6 +21,14 @@
     if ($googleBusinessDisplay === '') {
         $googleBusinessDisplay = (string) $googleBusiness;
     }
+
+    $marketScope = data_get(
+        $analysisResult,
+        'search_profile.market_scope',
+        'hybrid'
+    );
+
+    $isBroaderMarket = $marketScope === 'broader';
 @endphp
 
 <header class="site-header">
@@ -103,7 +111,7 @@
                             </div>
 
                             <a
-                                href="{{ route('home') }}#analysis-form"
+                                href="{{ route('home', ['edit' => 'website']) }}#analysis-form"
                                 class="step2-change-button"
                             >
                                 Change
@@ -130,7 +138,7 @@
                             </div>
 
                             <a
-                                href="{{ route('home') }}#analysis-form"
+                                href="{{ route('home', ['edit' => 'google_business']) }}#analysis-form"
                                 class="step2-change-button"
                             >
                                 Change
@@ -145,7 +153,11 @@
                     <div class="step2-info-note">
                         <span aria-hidden="true">i</span>
                         <p>
-                            You can update your business information if anything is incorrect.
+                            @if (!empty($websiteScanWarning))
+                                {{ $websiteScanWarning }}
+                            @else
+                                You can update your business information if anything is incorrect.
+                            @endif
                         </p>
                     </div>
                 </section>
@@ -309,21 +321,23 @@
                                             <span>{{ $category }}</span>
                                         </div>
 
-                                        <div class="step2-distance">
-                                            <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                <path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path>
-                                                <circle cx="12" cy="10" r="2"></circle>
-                                            </svg>
+                                        @if (!$isBroaderMarket)
+                                            <div class="step2-distance">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true">
+                                                    <path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path>
+                                                    <circle cx="12" cy="10" r="2"></circle>
+                                                </svg>
 
-                                            @if ($distanceMiles !== null)
-                                                <span>
-                                                    {{ number_format($distanceMiles, 1) }}
-                                                    miles away
-                                                </span>
-                                            @else
-                                                <span>Location not available</span>
-                                            @endif
-                                        </div>
+                                                @if ($distanceMiles !== null)
+                                                    <span>
+                                                        {{ number_format($distanceMiles, 1) }}
+                                                        miles away
+                                                    </span>
+                                                @else
+                                                    <span>Location not available</span>
+                                                @endif
+                                            </div>
+                                        @endif
                                     </div>
 
                                     <div class="step2-rating">

@@ -597,4 +597,381 @@ class AnalysisFlowTest extends TestCase
             'google_places_session_token',
         ]);
     }
+
+    public function test_change_website_prefills_existing_analysis_and_keeps_google_selection(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $response = $this
+            ->withSession([
+                'analysis.website'
+                    => 'https://acmeplumbing.com',
+
+                'analysis.google_business'
+                    => 'Acme Plumbing',
+
+                'analysis.google_place_id'
+                    => 'customer-place',
+
+                'analysis.google_places_session_token'
+                    => $sessionToken,
+            ])
+            ->get(
+                route(
+                    'home',
+                    ['edit' => 'website']
+                )
+            );
+
+        $response->assertOk();
+
+        $response->assertSee(
+            'value="https://acmeplumbing.com"',
+            false
+        );
+
+        $response->assertSee(
+            'value="Acme Plumbing"',
+            false
+        );
+
+        $response->assertSee(
+            'value="customer-place"',
+            false
+        );
+
+        $response->assertSee(
+            'value="'.$sessionToken.'"',
+            false
+        );
+
+        $response->assertSee(
+            'name="edit_mode"',
+            false
+        );
+
+        $response->assertSee(
+            'value="website"',
+            false
+        );
+    }
+
+    public function test_change_google_business_prefills_existing_website_and_selection(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $response = $this
+            ->withSession([
+                'analysis.website'
+                    => 'https://acmeplumbing.com',
+
+                'analysis.google_business'
+                    => 'Acme Plumbing',
+
+                'analysis.google_place_id'
+                    => 'customer-place',
+
+                'analysis.google_places_session_token'
+                    => $sessionToken,
+            ])
+            ->get(
+                route(
+                    'home',
+                    ['edit' => 'google_business']
+                )
+            );
+
+        $response->assertOk();
+
+        $response->assertSee(
+            'value="https://acmeplumbing.com"',
+            false
+        );
+
+        $response->assertSee(
+            'value="Acme Plumbing"',
+            false
+        );
+
+        $response->assertSee(
+            'value="google_business"',
+            false
+        );
+    }
+
+    public function test_selected_google_business_continues_when_website_returns_http_403(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $fallbackWebsiteScan = [
+            'final_url'
+                => 'https://blocked.example',
+
+            'status' => 403,
+
+            'title' => null,
+
+            'meta_description' => null,
+
+            'h1' => [],
+
+            'h2' => [],
+
+            'text' => '',
+
+            'available' => false,
+        ];
+
+        $googlePlace = [
+            'id' => 'blocked-customer-place',
+
+            'displayName' => [
+                'text' => 'Blocked Website Plumbing',
+                'languageCode' => 'en',
+            ],
+
+            'formattedAddress'
+                => '100 Main St, Austin, TX',
+
+            'primaryType'
+                => 'plumber',
+
+            'primaryTypeDisplayName' => [
+                'text' => 'Plumber',
+                'languageCode' => 'en',
+            ],
+
+            'types' => [
+                'plumber',
+            ],
+
+            'location' => [
+                'latitude' => 30.2672,
+                'longitude' => -97.7431,
+            ],
+        ];
+
+        $analysisResult = [
+            'business_profile' => [],
+
+            'classification' => [
+                'vertical' => 'home_services',
+                'market_scope' => 'local',
+            ],
+
+            'search_profile' => [
+                'business_type' => 'Plumber',
+            ],
+
+            'candidate_count' => 5,
+
+            'top_competitors' => [],
+
+            'strong_match_count' => 0,
+
+            'has_competitors' => false,
+        ];
+
+        $websiteScanner =
+            Mockery::mock(
+                WebsiteScanner::class
+            );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with(
+                'https://blocked.example'
+            )
+            ->andThrow(
+                new \RuntimeException(
+                    'Website returned HTTP status 403.'
+                )
+            );
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces =
+            Mockery::mock(
+                GooglePlacesService::class
+            );
+
+        $googlePlaces
+            ->shouldReceive(
+                'isConfigured'
+            )
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive(
+                'getPlaceDetails'
+            )
+            ->once()
+            ->with(
+                'blocked-customer-place',
+                $sessionToken
+            )
+            ->andReturn(
+                $googlePlace
+            );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis =
+            Mockery::mock(
+                CompetitorAnalysisService::class
+            );
+
+        $competitorAnalysis
+            ->shouldReceive(
+                'analyze'
+            )
+            ->once()
+            ->with(
+                $fallbackWebsiteScan,
+                $googlePlace
+            )
+            ->andReturn(
+                $analysisResult
+            );
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response =
+            $this->post(
+                route(
+                    'analysis.start'
+                ),
+                [
+                    'website'
+                        => 'https://blocked.example',
+
+                    'google_business'
+                        => 'Blocked Website Plumbing',
+
+                    'google_place_id'
+                        => 'blocked-customer-place',
+
+                    'google_places_session_token'
+                        => $sessionToken,
+                ]
+            );
+
+        $response->assertRedirect(
+            route('competitors')
+        );
+
+        $response->assertSessionHas(
+            'analysis.website_scan',
+            $fallbackWebsiteScan
+        );
+
+        $response->assertSessionHas(
+            'analysis.website_scan_warning',
+            'We couldn’t read this website directly, so these matches are based mainly on the Google Business Profile.'
+        );
+    }
+
+    public function test_non_http_website_scan_failure_is_not_bypassed(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $websiteScanner =
+            Mockery::mock(
+                WebsiteScanner::class
+            );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->andThrow(
+                new \RuntimeException(
+                    'Local or internal websites cannot be scanned.'
+                )
+            );
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces =
+            Mockery::mock(
+                GooglePlacesService::class
+            );
+
+        $googlePlaces->shouldNotReceive(
+            'isConfigured'
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'getPlaceDetails'
+        );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis =
+            Mockery::mock(
+                CompetitorAnalysisService::class
+            );
+
+        $competitorAnalysis->shouldNotReceive(
+            'analyze'
+        );
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response =
+            $this->from(
+                route('home')
+            )->post(
+                route(
+                    'analysis.start'
+                ),
+                [
+                    'website'
+                        => 'https://example.com',
+
+                    'google_business'
+                        => 'Example Business',
+
+                    'google_place_id'
+                        => 'example-place',
+
+                    'google_places_session_token'
+                        => $sessionToken,
+                ]
+            );
+
+        $response->assertRedirect(
+            route('home')
+        );
+
+        $response->assertSessionHasErrors([
+            'website'
+                => 'Local or internal websites cannot be scanned.',
+        ]);
+    }
+
+
 }

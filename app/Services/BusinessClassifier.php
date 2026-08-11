@@ -79,8 +79,21 @@ class BusinessClassifier
         'technology' => [
             'software company',
             'software development',
+            'business software',
+            'software',
             'saas',
             'technology company',
+            'crm',
+            'customer relationship management',
+            'customer platform',
+            'marketing automation',
+            'marketing software',
+            'sales software',
+            'sales platform',
+            'customer service software',
+            'customer support software',
+            'revenue platform',
+            'go to market',
             'cybersecurity',
             'cloud services',
             'it consulting',
@@ -118,7 +131,20 @@ class BusinessClassifier
         'manufacturing',
         'fabrication',
         'software development',
+        'business software',
+        'software',
         'saas',
+        'crm',
+        'customer relationship management',
+        'customer platform',
+        'marketing automation',
+        'marketing software',
+        'sales software',
+        'sales platform',
+        'customer service software',
+        'customer support software',
+        'revenue platform',
+        'go to market',
         'cybersecurity',
         'cloud services',
         'web development',
@@ -267,12 +293,7 @@ class BusinessClassifier
             $score = 0;
 
             foreach ($keywords as $keyword) {
-                if (
-                    str_contains(
-                        $haystack,
-                        mb_strtolower($keyword)
-                    )
-                ) {
+                if ($this->containsPhrase($haystack, $keyword)) {
                     $score++;
                 }
             }
@@ -389,12 +410,7 @@ class BusinessClassifier
         $matches = [];
 
         foreach (self::SERVICE_KEYWORDS as $keyword) {
-            if (
-                str_contains(
-                    $haystack,
-                    mb_strtolower($keyword)
-                )
-            ) {
+            if ($this->containsPhrase($haystack, $keyword)) {
                 $matches[] = $keyword;
             }
         }
@@ -408,6 +424,42 @@ class BusinessClassifier
                 )
             )
         );
+    }
+
+
+    private function containsPhrase(
+        string $haystack,
+        string $phrase
+    ): bool {
+        $phrase = mb_strtolower(
+            trim($phrase)
+        );
+
+        $phrase = str_replace(
+            ['_', '-', '/', '\\'],
+            ' ',
+            $phrase
+        );
+
+        $phrase = preg_replace(
+            '/\s+/u',
+            ' ',
+            $phrase
+        ) ?? $phrase;
+
+        if ($phrase === '') {
+            return false;
+        }
+
+        $pattern =
+            '/(?<![\p{L}\p{N}])'
+            . preg_quote($phrase, '/')
+            . '(?![\p{L}\p{N}])/u';
+
+        return preg_match(
+            $pattern,
+            $haystack
+        ) === 1;
     }
 
     private function confidence(int $score): string

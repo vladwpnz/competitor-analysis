@@ -8,6 +8,7 @@ class SearchProfileBuilder
 {
     private const GENERIC_HEADINGS = [
         'home',
+        'homepage',
         'welcome',
         'about',
         'about us',
@@ -18,6 +19,24 @@ class SearchProfileBuilder
         'learn more',
         'get started',
         'why choose us',
+        'platform',
+        'products',
+        'solutions',
+        'resources',
+        'marketing',
+        'sales',
+        'customer service',
+        'content',
+        'the customer platform',
+        'startups & small businesses',
+    ];
+
+    private const GENERIC_GOOGLE_TYPES = [
+        'point of interest',
+        'service',
+        'establishment',
+        'corporate office',
+        'organization',
     ];
 
     public function build(
@@ -68,24 +87,62 @@ class SearchProfileBuilder
             ? $this->uniqueStrings($services)
             : [];
 
+        $vertical = $this->stringOrNull(
+            data_get(
+                $classification,
+                'vertical'
+            )
+        );
+
+        $marketScope = (string) data_get(
+            $classification,
+            'market_scope',
+            'hybrid'
+        );
+
         $businessType = $this->determineBusinessType(
             $primaryTypeName,
             $primaryType,
             $websiteTitle,
-            $businessName
+            $businessName,
+            $vertical
         );
 
         $queryCandidates = [];
 
-        if ($businessType !== null) {
-            $queryCandidates[] = $businessType;
-        }
-
-        foreach ($services as $service) {
-            $queryCandidates[] = $service;
+        if ($vertical === 'technology') {
+            /*
+             * For broad technology companies, specific product/category
+             * intent is more valuable than a generic "Software Company"
+             * query. CompetitorSearchService executes only the first four
+             * queries, so put CRM/platform/automation intent first and keep
+             * the generic business type as a fallback at the end.
+             */
+            foreach (
+                $this->technologyQueries($services)
+                as $query
+            ) {
+                $queryCandidates[] = $query;
+            }
 
             if ($businessType !== null) {
-                $queryCandidates[] = $service . ' ' . $businessType;
+                $queryCandidates[] = $businessType;
+            }
+        } else {
+            if ($businessType !== null) {
+                $queryCandidates[] = $businessType;
+            }
+
+            foreach ($services as $service) {
+                $queryCandidates[] = $service;
+
+                if (
+                    $businessType !== null
+                    && $marketScope !== 'broader'
+                ) {
+                    $queryCandidates[] =
+                        $service . ' ' . $businessType;
+                }
             }
         }
 
@@ -102,7 +159,10 @@ class SearchProfileBuilder
             }
         }
 
-        if ($queryCandidates === [] && $websiteTitle !== null) {
+        if (
+            $queryCandidates === []
+            && $websiteTitle !== null
+        ) {
             $fallback = $this->removeBusinessName(
                 $websiteTitle,
                 $businessName
@@ -124,11 +184,9 @@ class SearchProfileBuilder
 
             'search_queries' => $searchQueries,
 
-            'market_scope' => data_get(
-                $classification,
-                'market_scope',
-                'hybrid'
-            ),
+            'vertical' => $vertical,
+
+            'market_scope' => $marketScope,
 
             'geography_weight' => data_get(
                 $classification,
@@ -187,28 +245,180 @@ class SearchProfileBuilder
         ?string $primaryTypeName,
         ?string $primaryType,
         ?string $websiteTitle,
-        ?string $businessName
+        ?string $businessName,
+        ?string $vertical
     ): ?string {
         if ($primaryTypeName !== null) {
-            return $this->normalizePhrase(
+            $normalized = $this->normalizePhrase(
                 $primaryTypeName
             );
+
+            if (! $this->isGenericGoogleType($normalized)) {
+                return $normalized;
+            }
         }
 
         if ($primaryType !== null) {
-            return $this->normalizePhrase(
+            $normalized = $this->normalizePhrase(
                 str_replace('_', ' ', $primaryType)
             );
+
+            if (! $this->isGenericGoogleType($normalized)) {
+                return $normalized;
+            }
+        }
+
+        /*
+         * Google often exposes broad B2B companies only as
+         * "service", "establishment" or "point_of_interest".
+         * When the website signals clearly identify technology,
+         * use a useful canonical Maps query instead of those
+         * generic Google types or the full marketing page title.
+         */
+        if ($vertical === 'technology') {
+            return 'Software Company';
         }
 
         if ($websiteTitle !== null) {
-            return $this->removeBusinessName(
+            $title = $this->removeBusinessName(
                 $websiteTitle,
                 $businessName
             );
+
+            if ($title === null) {
+                return null;
+            }
+
+            $title = preg_replace(
+                '/\b(homepage|home\s+page)\b/ui',
+                ' ',
+                $title
+            ) ?? $title;
+
+            $title = $this->normalizePhrase(
+                $title
+            );
+
+            return $title === ''
+                ? null
+                : $title;
         }
 
         return null;
+    }
+
+    private function technologyQueries(
+        array $services
+    ): array {
+        $queries = [];
+        $normalizedServices = array_map(
+            fn (string $service) =>
+                mb_strtolower($service),
+            $services
+        );
+
+        $hasAny = static function (
+            array $needles
+        ) use ($normalizedServices): bool {
+            foreach ($needles as $needle) {
+                if (
+                    in_array(
+                        mb_strtolower($needle),
+                        $normalizedServices,
+                        true
+                    )
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        if (
+            $hasAny([
+                'crm',
+                'customer relationship management',
+            ])
+        ) {
+            $queries[] = 'CRM Software Company';
+        }
+
+        if ($hasAny(['customer platform'])) {
+            $queries[] = 'Customer Platform Software Company';
+        }
+
+        if (
+            $hasAny([
+                'marketing automation',
+                'marketing software',
+            ])
+        ) {
+            $queries[] = 'Marketing Automation Software Company';
+        }
+
+        if (
+            $hasAny([
+                'sales software',
+                'sales platform',
+            ])
+        ) {
+            $queries[] = 'Sales CRM Software Company';
+        }
+
+        if (
+            $hasAny([
+                'customer service software',
+                'customer support software',
+            ])
+        ) {
+            $queries[] = 'Customer Service Software Company';
+        }
+
+        if (
+            $hasAny([
+                'revenue platform',
+                'go to market',
+            ])
+        ) {
+            $queries[] = 'Go To Market Software Company';
+        }
+
+        if ($hasAny(['saas'])) {
+            $queries[] = 'SaaS Company';
+        }
+
+        if ($hasAny(['cybersecurity'])) {
+            $queries[] = 'Cybersecurity Software Company';
+        }
+
+        if ($hasAny(['cloud services'])) {
+            $queries[] = 'Cloud Software Company';
+        }
+
+        if ($hasAny(['software development'])) {
+            $queries[] = 'Software Development Company';
+        }
+
+        if ($hasAny(['web development'])) {
+            $queries[] = 'Web Development Company';
+        }
+
+        if ($hasAny(['app development'])) {
+            $queries[] = 'App Development Company';
+        }
+
+        return $queries;
+    }
+
+    private function isGenericGoogleType(
+        string $value
+    ): bool {
+        return in_array(
+            mb_strtolower($value),
+            self::GENERIC_GOOGLE_TYPES,
+            true
+        );
     }
 
     private function cleanHeading(
@@ -242,6 +452,17 @@ class SearchProfileBuilder
          * Very long headings usually make poor Maps queries.
          */
         if (mb_strlen($heading) > 80) {
+            return null;
+        }
+
+        /*
+         * Single broad words are usually navigation labels rather
+         * than competitor-defining queries.
+         */
+        if (
+            ! str_contains($heading, ' ')
+            && mb_strlen($heading) < 12
+        ) {
             return null;
         }
 

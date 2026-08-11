@@ -47,22 +47,12 @@ class AnalysisController extends Controller
                 'nullable',
                 'uuid',
             ],
+
+            'edit_mode' => [
+                'nullable',
+                'in:website,google_business',
+            ],
         ]);
-
-        try {
-            $websiteScan = $websiteScanner->scan(
-                $validated['website']
-            );
-        } catch (RuntimeException $exception) {
-            return back()
-                ->withErrors([
-                    'website' => $exception->getMessage(),
-                ])
-                ->withInput();
-        }
-
-        $googlePlace = null;
-        $analysisResult = null;
 
         $googlePlaceId = trim(
             (string) (
@@ -78,13 +68,77 @@ class AnalysisController extends Controller
             )
         );
 
+        $editMode = $validated['edit_mode'] ?? null;
+
+        $websiteScan = null;
+        $websiteScanWarning = null;
+
+        $existingWebsite = session('analysis.website');
+        $existingWebsiteScan = session('analysis.website_scan');
+
+        $canReuseWebsiteScan =
+            $editMode !== null
+            && is_string($existingWebsite)
+            && $existingWebsite === $validated['website']
+            && is_array($existingWebsiteScan);
+
+        if ($canReuseWebsiteScan) {
+            $websiteScan = $existingWebsiteScan;
+
+            $existingWarning = session(
+                'analysis.website_scan_warning'
+            );
+
+            $websiteScanWarning = is_string($existingWarning)
+                && trim($existingWarning) !== ''
+                    ? $existingWarning
+                    : null;
+        } else {
+            try {
+                $websiteScan = $websiteScanner->scan(
+                    $validated['website']
+                );
+            } catch (RuntimeException $exception) {
+                $httpStatus = $this->websiteHttpFailureStatus(
+                    $exception
+                );
+
+                /*
+                 * Legitimate websites can block automated homepage
+                 * requests with 4xx/5xx responses. If the user already
+                 * selected a real Google Business Profile, continue with
+                 * Google business signals instead of killing onboarding.
+                 *
+                 * URL/security failures are still returned as errors.
+                 */
+                if (
+                    $googlePlaceId === ''
+                    || $httpStatus === null
+                ) {
+                    return back()
+                        ->withErrors([
+                            'website' => $exception->getMessage(),
+                        ])
+                        ->withInput();
+                }
+
+                $websiteScan = $this->unavailableWebsiteScan(
+                    $validated['website'],
+                    $httpStatus
+                );
+
+                $websiteScanWarning =
+                    'We couldn’t read this website directly, so these matches are based mainly on the Google Business Profile.';
+            }
+        }
+
+        $googlePlace = null;
+        $analysisResult = null;
+
         /*
-         * Never guess which Google Business belongs
-         * to the user.
-         *
-         * The full analysis starts only after the user
-         * explicitly selects an Autocomplete prediction
-         * and we receive its stable Place ID.
+         * Never guess which Google Business belongs to the user.
+         * Full analysis starts only after an explicit Autocomplete
+         * selection gives us a stable Place ID.
          */
         if ($googlePlaceId !== '') {
             if (! $googlePlaces->isConfigured()) {
@@ -96,11 +150,34 @@ class AnalysisController extends Controller
                     ->withInput();
             }
 
+            $existingGooglePlaceId = session(
+                'analysis.google_place_id'
+            );
+
+            $existingGoogleBusiness = session(
+                'analysis.google_business'
+            );
+
+            $existingGooglePlace = session(
+                'analysis.google_place'
+            );
+
+            $canReuseGooglePlace =
+                $editMode !== null
+                && is_string($existingGooglePlaceId)
+                && $existingGooglePlaceId === $googlePlaceId
+                && is_string($existingGoogleBusiness)
+                && $existingGoogleBusiness
+                    === $validated['google_business']
+                && is_array($existingGooglePlace);
+
             try {
-                $googlePlace = $googlePlaces->getPlaceDetails(
-                    $googlePlaceId,
-                    $googlePlacesSessionToken
-                );
+                $googlePlace = $canReuseGooglePlace
+                    ? $existingGooglePlace
+                    : $googlePlaces->getPlaceDetails(
+                        $googlePlaceId,
+                        $googlePlacesSessionToken
+                    );
 
                 $analysisResult = $competitorAnalysis->analyze(
                     $websiteScan,
@@ -138,6 +215,9 @@ class AnalysisController extends Controller
 
             'analysis.website_scan'
                 => $websiteScan,
+
+            'analysis.website_scan_warning'
+                => $websiteScanWarning,
 
             'analysis.google_place'
                 => $googlePlace,
@@ -183,6 +263,10 @@ class AnalysisController extends Controller
             'analysis.result'
         );
 
+        $websiteScanWarning = session(
+            'analysis.website_scan_warning'
+        );
+
         $topCompetitors = is_array($analysisResult)
             ? data_get(
                 $analysisResult,
@@ -203,6 +287,12 @@ class AnalysisController extends Controller
                 'websiteScan'
                     => $websiteScan,
 
+                'websiteScanWarning'
+                    => is_string($websiteScanWarning)
+                        && trim($websiteScanWarning) !== ''
+                            ? $websiteScanWarning
+                            : null,
+
                 'googlePlace'
                     => is_array($googlePlace)
                         ? $googlePlace
@@ -219,5 +309,41 @@ class AnalysisController extends Controller
                         : [],
             ]
         );
+    }
+
+    private function websiteHttpFailureStatus(
+        RuntimeException $exception
+    ): ?int {
+        if (
+            preg_match(
+                '/^Website returned HTTP status (\d{3})\.$/',
+                $exception->getMessage(),
+                $matches
+            ) !== 1
+        ) {
+            return null;
+        }
+
+        $status = (int) ($matches[1] ?? 0);
+
+        return $status >= 400 && $status <= 599
+            ? $status
+            : null;
+    }
+
+    private function unavailableWebsiteScan(
+        string $url,
+        int $status
+    ): array {
+        return [
+            'final_url' => $url,
+            'status' => $status,
+            'title' => null,
+            'meta_description' => null,
+            'h1' => [],
+            'h2' => [],
+            'text' => '',
+            'available' => false,
+        ];
     }
 }

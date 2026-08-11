@@ -293,11 +293,49 @@ class CompetitorSearchService
         }
 
         /*
-         * Broader businesses are relevance-first.
-         * We intentionally do not force geographic
-         * expansion stages on them.
+         * Broader businesses are relevance-first, so distance must not
+         * control ranking. For broad technology companies, however, a
+         * completely unscoped global Places query can surface small or
+         * unrelated listings from anywhere in the world. When Google has
+         * given us a real business address, use only the country as a weak
+         * market context. This keeps the search national rather than local
+         * while still allowing relevance to decide the winners.
          */
         if (! $isLocalScope) {
+            $vertical = (string) data_get(
+                $searchProfile,
+                'vertical',
+                ''
+            );
+
+            if ($vertical === 'technology') {
+                $countryContext = $this->geographicContext(
+                    $searchProfile,
+                    self::STAGE_COUNTRY
+                );
+
+                if ($countryContext !== null) {
+                    $executedQuery = $this->buildContextualQuery(
+                        $query,
+                        $countryContext
+                    );
+
+                    $places = $this->googlePlaces
+                        ->searchBusinesses(
+                            $executedQuery,
+                            self::RESULTS_PER_QUERY
+                        );
+
+                    if ($places !== []) {
+                        return [
+                            $places,
+                            'broader_country_context',
+                            $executedQuery,
+                        ];
+                    }
+                }
+            }
+
             $places = $this->googlePlaces
                 ->searchBusinesses(
                     $query,

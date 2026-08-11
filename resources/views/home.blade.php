@@ -4,6 +4,56 @@
 
 @section('content')
 
+@php
+    $requestedEditMode = old(
+        'edit_mode',
+        request()->query('edit')
+    );
+
+    $editMode = in_array(
+        $requestedEditMode,
+        ['website', 'google_business'],
+        true
+    )
+        ? $requestedEditMode
+        : null;
+
+    $editingExistingAnalysis =
+        $editMode !== null;
+
+    $websiteValue = old(
+        'website',
+        $editingExistingAnalysis
+            ? (string) session('analysis.website', '')
+            : ''
+    );
+
+    $googleBusinessValue = old(
+        'google_business',
+        $editingExistingAnalysis
+            ? (string) session('analysis.google_business', '')
+            : ''
+    );
+
+    $googlePlaceIdValue = old(
+        'google_place_id',
+        $editingExistingAnalysis
+            ? (string) session('analysis.google_place_id', '')
+            : ''
+    );
+
+    $googlePlacesSessionTokenValue = old(
+        'google_places_session_token',
+        $editingExistingAnalysis
+            ? (string) session(
+                'analysis.google_places_session_token',
+                ''
+            )
+            : ''
+    );
+@endphp
+
+
 <header class="site-header">
     <div class="container header-inner">
         <a href="{{ route('home') }}" class="brand" aria-label="Intellytics home">
@@ -59,6 +109,14 @@
                 >
                     @csrf
 
+                    @if ($editMode !== null)
+                        <input
+                            type="hidden"
+                            name="edit_mode"
+                            value="{{ $editMode }}"
+                        >
+                    @endif
+
                     <div class="analysis-fields">
                         <div class="form-step">
                             <div class="form-heading">
@@ -76,9 +134,11 @@
                                     id="website"
                                     name="website"
                                     type="url"
-                                    value="{{ old('website') }}"
+                                    value="{{ $websiteValue }}"
                                     placeholder="https://yourwebsite.com"
                                     autocomplete="url"
+                                    @if ($editMode === 'google_business') readonly @endif
+                                    @if ($editMode === 'website') autofocus @endif
                                     required
                                 >
                             </div>
@@ -114,7 +174,7 @@
                                         id="google_business"
                                         name="google_business"
                                         type="text"
-                                        value="{{ old('google_business') }}"
+                                        value="{{ $googleBusinessValue }}"
                                         placeholder="Search for your business on Google Maps"
                                         autocomplete="off"
                                         spellcheck="false"
@@ -122,6 +182,8 @@
                                         aria-autocomplete="list"
                                         aria-controls="google-business-suggestions"
                                         aria-expanded="false"
+                                        @if ($editMode === 'website') readonly @endif
+                                        @if ($editMode === 'google_business') autofocus @endif
                                         required
                                     >
 
@@ -136,14 +198,14 @@
                                     id="google_place_id"
                                     name="google_place_id"
                                     type="hidden"
-                                    value="{{ old('google_place_id') }}"
+                                    value="{{ $googlePlaceIdValue }}"
                                 >
 
                                 <input
                                     id="google_places_session_token"
                                     name="google_places_session_token"
                                     type="hidden"
-                                    value="{{ old('google_places_session_token') }}"
+                                    value="{{ $googlePlacesSessionTokenValue }}"
                                 >
 
                                 <div
@@ -1216,6 +1278,10 @@ document.addEventListener('DOMContentLoaded', () => {
     businessInput.addEventListener(
         'input',
         () => {
+            if (businessInput.readOnly) {
+                return;
+            }
+
             const query =
                 businessInput.value.trim();
 

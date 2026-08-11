@@ -131,6 +131,12 @@ class CompetitorRelevanceScorer
             $searchProfile
         );
 
+        $technologyIntentRatio =
+            $this->technologyIntentEvidence(
+                $candidate,
+                $searchProfile
+            );
+
         $distanceRatio = $this->distanceEvidence(
             data_get(
                 $candidate,
@@ -171,16 +177,49 @@ class CompetitorRelevanceScorer
             min(100, $score)
         );
 
+        $focusedTechnologySearch =
+            $marketScope === 'broader'
+            && $this->hasFocusedTechnologyIntent(
+                $searchProfile
+            );
+
+        /*
+         * A broad technology query such as "Software Company" can
+         * surface agencies, dev shops and unrelated IT businesses. When
+         * the target profile contains stronger product intent (CRM,
+         * customer platform, marketing automation, etc.), require that
+         * the candidate is connected to at least one of those specific
+         * intents. This keeps generic software-development companies
+         * below actual product competitors without affecting broad tech
+         * searches that genuinely have only generic signals.
+         */
+        if (
+            $focusedTechnologySearch
+            && $technologyIntentRatio < 0.25
+        ) {
+            $score = round(
+                $score * 0.55,
+                2
+            );
+        }
+
         /*
          * Query hits alone are not enough to make a local business
          * a strong competitor. Google can return adjacent categories
          * for a relevant query, so require intrinsic category/service
-         * evidence for local markets.
+         * evidence for local markets. Focused broader technology
+         * searches additionally require specific product-intent evidence.
          */
-        $typeCompatible =
-            $marketScope !== 'local'
-            || $typeRatio >= 0.45
-            || $serviceRatio >= 0.15;
+        $typeCompatible = match (true) {
+            $focusedTechnologySearch =>
+                $technologyIntentRatio >= 0.25,
+
+            $marketScope === 'local' =>
+                $typeRatio >= 0.45
+                || $serviceRatio >= 0.15,
+
+            default => true,
+        };
 
         return [
             'score' => $score,
@@ -230,8 +269,187 @@ class CompetitorRelevanceScorer
                     'types',
                     []
                 ),
+
+                'technology_intent_ratio' =>
+                    round(
+                        $technologyIntentRatio,
+                        3
+                    ),
             ],
         ];
+    }
+
+    private function hasFocusedTechnologyIntent(
+        array $searchProfile
+    ): bool {
+        if (
+            data_get($searchProfile, 'vertical')
+                !== 'technology'
+        ) {
+            return false;
+        }
+
+        $services = data_get(
+            $searchProfile,
+            'services',
+            []
+        );
+
+        if (! is_array($services)) {
+            return false;
+        }
+
+        $specificIntents = [
+            'crm',
+            'customer relationship management',
+            'customer platform',
+            'marketing automation',
+            'marketing software',
+            'sales software',
+            'sales platform',
+            'customer service software',
+            'customer support software',
+            'revenue platform',
+            'go to market',
+        ];
+
+        foreach ($services as $service) {
+            $service = $this->normalizePhrase(
+                $service
+            );
+
+            if (
+                $service !== null
+                && in_array(
+                    $service,
+                    $specificIntents,
+                    true
+                )
+            ) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function technologyIntentEvidence(
+        array $candidate,
+        array $searchProfile
+    ): float {
+        if (! $this->hasFocusedTechnologyIntent(
+            $searchProfile
+        )) {
+            return 0.0;
+        }
+
+        $specificIntents = [
+            'crm',
+            'customer relationship management',
+            'customer platform',
+            'marketing automation',
+            'marketing software',
+            'sales software',
+            'sales platform',
+            'customer service software',
+            'customer support software',
+            'revenue platform',
+            'go to market',
+        ];
+
+        $candidateText = [
+            data_get(
+                $candidate,
+                'displayName.text'
+            ),
+            data_get(
+                $candidate,
+                'primaryType'
+            ),
+            data_get(
+                $candidate,
+                'primaryTypeDisplayName.text'
+            ),
+        ];
+
+        $types = data_get(
+            $candidate,
+            'types',
+            []
+        );
+
+        if (is_array($types)) {
+            $candidateText = array_merge(
+                $candidateText,
+                $types
+            );
+        }
+
+        $matchedQueries = data_get(
+            $candidate,
+            '_match.queries',
+            []
+        );
+
+        if (is_array($matchedQueries)) {
+            $candidateText = array_merge(
+                $candidateText,
+                $matchedQueries
+            );
+        }
+
+        $haystack = $this->normalizePhrase(
+            implode(
+                ' ',
+                array_filter(
+                    $candidateText,
+                    fn ($value) => is_string($value)
+                        && trim($value) !== ''
+                )
+            )
+        );
+
+        if ($haystack === null) {
+            return 0.0;
+        }
+
+        $matched = 0;
+
+        foreach ($specificIntents as $intent) {
+            if (
+                $this->containsPhrase(
+                    $haystack,
+                    $intent
+                )
+            ) {
+                $matched++;
+            }
+        }
+
+        return min(
+            1.0,
+            $matched / 2
+        );
+    }
+
+    private function containsPhrase(
+        string $haystack,
+        string $needle
+    ): bool {
+        $needle = $this->normalizePhrase(
+            $needle
+        );
+
+        if ($needle === null) {
+            return false;
+        }
+
+        return preg_match(
+            '/(?<![\p{L}\p{N}])'
+                . preg_quote($needle, '/')
+                . '(?![\p{L}\p{N}])/u',
+            $haystack
+        ) === 1;
     }
 
     private function weights(
