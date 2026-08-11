@@ -193,7 +193,38 @@
                     </button>
 
                 </form>
+<div
+    style="
+        margin-top: 14px;
+        text-align: center;
+    "
+>
+    <a
+        href="{{ route('preview.competitors') }}"
+        style="
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: #5b40b4;
+            font-size: 13px;
+            font-weight: 700;
+            text-decoration: none;
+        "
+    >
+        Preview current competitor results
+        <span>→</span>
+    </a>
 
+    <div
+        style="
+            margin-top: 5px;
+            color: #8a8598;
+            font-size: 11px;
+        "
+    >
+        Development preview · sample data
+    </div>
+</div>
                 <div class="hero-trust">
                     <span>✓ No credit card required</span>
                     <span>✓ Website scan included</span>

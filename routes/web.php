@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\GoogleBusinessController;
+use App\Http\Controllers\PreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::get(
@@ -23,3 +24,8 @@ Route::get(
     '/competitors',
     [AnalysisController::class, 'competitors']
 )->name('competitors');
+
+Route::get(
+    '/preview',
+    [PreviewController::class, 'competitors']
+)->name('preview.competitors');

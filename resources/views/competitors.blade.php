@@ -38,7 +38,36 @@
     <section class="competitors-hero">
 
         <div class="container competitors-container">
-
+@if ($isPreview ?? false)
+    <div
+        style="
+            margin: 0 auto 24px;
+            max-width: 760px;
+            padding: 14px 18px;
+            border: 1px solid rgba(91, 64, 180, 0.22);
+            border-radius: 14px;
+            background: rgba(91, 64, 180, 0.07);
+            color: #4d3bb3;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+            line-height: 1.5;
+        "
+    >
+        DEVELOPMENT PREVIEW · SAMPLE DATA
+        <div
+            style="
+                margin-top: 3px;
+                color: #777286;
+                font-size: 12px;
+                font-weight: 500;
+            "
+        >
+            This preview demonstrates the current Step 2 experience.
+            Live businesses will populate these results once Google Places is connected.
+        </div>
+    </div>
+@endif
             <div class="step-badge">
                 STEP 2 OF 3
             </div>
