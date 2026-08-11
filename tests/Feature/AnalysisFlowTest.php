@@ -186,7 +186,8 @@ class AnalysisFlowTest extends TestCase
             ->once()
             ->with(
                 'customer-place',
-                $sessionToken
+                $sessionToken,
+                true
             )
             ->andReturn(
                 $googlePlace
@@ -816,7 +817,8 @@ class AnalysisFlowTest extends TestCase
             ->once()
             ->with(
                 'blocked-customer-place',
-                $sessionToken
+                $sessionToken,
+                true
             )
             ->andReturn(
                 $googlePlace

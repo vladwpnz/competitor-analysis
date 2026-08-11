@@ -30,6 +30,11 @@ class BusinessProfileBuilder
             'location.longitude'
         );
 
+        $editorialSummary = data_get(
+            $googlePlace,
+            'editorialSummary.text'
+        );
+
         $websiteSignals = [
             'url' => $websiteScan['final_url'] ?? null,
             'title' => $websiteScan['title'] ?? null,
@@ -64,6 +69,11 @@ class BusinessProfileBuilder
             'rating' => $googlePlace['rating'] ?? null,
             'review_count'
                 => $googlePlace['userRatingCount'] ?? null,
+            'editorial_summary'
+                => is_string($editorialSummary)
+                    && trim($editorialSummary) !== ''
+                        ? trim($editorialSummary)
+                        : null,
         ];
 
         return [
@@ -96,6 +106,8 @@ class BusinessProfileBuilder
                     => $googleSignals['primary_type_name'],
                 'google_types'
                     => $googleSignals['types'],
+                'google_editorial_summary'
+                    => $googleSignals['editorial_summary'],
             ],
 
             'location' => [

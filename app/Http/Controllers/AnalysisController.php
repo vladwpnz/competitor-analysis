@@ -187,7 +187,8 @@ class AnalysisController extends Controller
                     ? $existingGooglePlace
                     : $googlePlaces->getPlaceDetails(
                         $googlePlaceId,
-                        $googlePlacesSessionToken
+                        $googlePlacesSessionToken,
+                        true
                     );
 
                 $analysisResult = $competitorAnalysis->analyze(

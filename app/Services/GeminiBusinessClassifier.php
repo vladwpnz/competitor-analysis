@@ -306,6 +306,15 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                     160
                 ),
 
+            'google_editorial_summary'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.google_editorial_summary'
+                    ),
+                    1200
+                ),
+
             'formatted_address'
                 => $this->boundedString(
                     data_get(

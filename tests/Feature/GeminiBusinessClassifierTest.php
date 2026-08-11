@@ -134,7 +134,23 @@ class GeminiBusinessClassifierTest extends TestCase
                     && data_get(
                         $data,
                         'response_format.schema.properties.search_queries.maxItems'
-                    ) === 4;
+                    ) === 4
+                    && str_contains(
+                        (string) data_get(
+                            $data,
+                            'input',
+                            ''
+                        ),
+                        'google_editorial_summary'
+                    )
+                    && str_contains(
+                        (string) data_get(
+                            $data,
+                            'input',
+                            ''
+                        ),
+                        'Industrial automation distributor and systems integrator serving manufacturers and OEMs.'
+                    );
             }
         );
     }
@@ -305,6 +321,9 @@ class GeminiBusinessClassifierTest extends TestCase
                     'manufacturer',
                     'establishment',
                 ],
+
+                'google_editorial_summary'
+                    => 'Industrial automation distributor and systems integrator serving manufacturers and OEMs.',
 
                 'headings' => [
                     'Our World Class Brands',

@@ -37,6 +37,12 @@ class BusinessProfileBuilderTest extends TestCase
             $profile['google_business']['place_id']
         );
 
+        $this->assertNull(
+            $profile[
+                'classification_input'
+            ]['google_editorial_summary']
+        );
+
         $this->assertSame(
             'Example Plumbing',
             $profile[
@@ -102,6 +108,11 @@ class BusinessProfileBuilderTest extends TestCase
                 => 'https://maps.google.com/example',
             'rating' => 4.8,
             'userRatingCount' => 127,
+            'editorialSummary' => [
+                'text'
+                    => 'Local plumbing company providing emergency repairs, drain cleaning and water heater service.',
+                'languageCode' => 'en',
+            ],
         ];
 
         $profile = $builder->build(
@@ -138,6 +149,20 @@ class BusinessProfileBuilderTest extends TestCase
             $profile[
                 'google_business'
             ]['review_count']
+        );
+
+        $this->assertSame(
+            'Local plumbing company providing emergency repairs, drain cleaning and water heater service.',
+            $profile[
+                'google_business'
+            ]['editorial_summary']
+        );
+
+        $this->assertSame(
+            'Local plumbing company providing emergency repairs, drain cleaning and water heater service.',
+            $profile[
+                'classification_input'
+            ]['google_editorial_summary']
         );
     }
 }

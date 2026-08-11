@@ -48,6 +48,14 @@ class GooglePlacesService
         'rating,' .
         'userRatingCount';
 
+    /*
+     * editorialSummary is an Enterprise + Atmosphere field. Keep it out of
+     * the default Place Details mask because competitor enrichment calls
+     * getPlaceDetails() for the final top five and does not need this field.
+     */
+    private const EDITORIAL_SUMMARY_FIELD =
+        'editorialSummary';
+
     public function isConfigured(): bool
     {
         return filled(
@@ -163,7 +171,8 @@ class GooglePlacesService
 
     public function getPlaceDetails(
         string $placeId,
-        ?string $sessionToken = null
+        ?string $sessionToken = null,
+        bool $includeEditorialSummary = false
     ): array {
         $placeId = trim(
             $placeId
@@ -193,9 +202,16 @@ class GooglePlacesService
                 = $sessionToken;
         }
 
+        $fieldMask = self::DETAILS_FIELD_MASK;
+
+        if ($includeEditorialSummary) {
+            $fieldMask .= ','
+                . self::EDITORIAL_SUMMARY_FIELD;
+        }
+
         $response = $this->request(
             'places/' . rawurlencode($placeId),
-            self::DETAILS_FIELD_MASK,
+            $fieldMask,
             null,
             $query
         );

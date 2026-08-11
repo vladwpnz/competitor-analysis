@@ -352,6 +352,80 @@ class GooglePlacesServiceTest extends TestCase
 
                     && $request->hasHeader(
                         'X-Goog-FieldMask'
+                    )
+                    && ! str_contains(
+                        (string) (
+                            $request->header(
+                                'X-Goog-FieldMask'
+                            )[0] ?? ''
+                        ),
+                        'editorialSummary'
+                    );
+            }
+        );
+    }
+
+    public function test_place_details_can_include_editorial_summary_for_subject_business(): void
+    {
+        $this->configureGoogle();
+
+        Http::preventStrayRequests();
+
+        Http::fake([
+            'https://places.googleapis.com/v1/places/test-place-1*'
+                => Http::response([
+                    'id'
+                        => 'test-place-1',
+
+                    'displayName' => [
+                        'text'
+                            => 'Acme Plumbing',
+                    ],
+
+                    'editorialSummary' => [
+                        'text'
+                            => 'Local plumbing company providing emergency repairs, drain cleaning and water heater service.',
+
+                        'languageCode'
+                            => 'en',
+                    ],
+                ], 200),
+        ]);
+
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $place = app(
+            GooglePlacesService::class
+        )->getPlaceDetails(
+            'test-place-1',
+            $sessionToken,
+            true
+        );
+
+        $this->assertSame(
+            'Local plumbing company providing emergency repairs, drain cleaning and water heater service.',
+            $place['editorialSummary']['text']
+        );
+
+        Http::assertSent(
+            function (Request $request) use (
+                $sessionToken
+            ): bool {
+                $fieldMask = (string) (
+                    $request->header(
+                        'X-Goog-FieldMask'
+                    )[0] ?? ''
+                );
+
+                return
+                    str_contains(
+                        $fieldMask,
+                        'editorialSummary'
+                    )
+                    && str_contains(
+                        $request->url(),
+                        'sessionToken=' . $sessionToken
                     );
             }
         );
