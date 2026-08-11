@@ -70,6 +70,19 @@ class BusinessClassifier
             'manufacturer',
             'manufacturing',
             'industrial',
+            'industrial automation',
+            'automation solutions',
+            'motion control',
+            'fluid power',
+            'industrial filtration',
+            'filtration systems',
+            'hydraulic',
+            'hydraulics',
+            'pneumatic',
+            'pneumatics',
+            'electromechanical',
+            'drive control',
+            'industrial equipment',
             'factory',
             'wholesale',
             'fabrication',
@@ -128,6 +141,20 @@ class BusinessClassifier
         'mortgage lending',
         'financial planning',
         'wealth management',
+        'motion control',
+        'industrial automation',
+        'automation solutions',
+        'industrial filtration',
+        'filtration systems',
+        'fluid power',
+        'hydraulics',
+        'hydraulic',
+        'pneumatics',
+        'pneumatic',
+        'electromechanical',
+        'drive control',
+        'industrial equipment',
+        'machinery',
         'manufacturing',
         'fabrication',
         'software development',
@@ -197,7 +224,8 @@ class BusinessClassifier
                 $marketScope
             ),
             'service_keywords' => $this->extractServiceKeywords(
-                $haystack
+                $haystack,
+                $vertical
             ),
             'confidence' => $this->confidence(
                 max($localScore, $broaderScore)
@@ -269,7 +297,7 @@ class BusinessClassifier
         $text = implode(' ', $values);
 
         $text = str_replace(
-            ['_', '-', '/', '\\'],
+            ['_', '-', '/', '\\', '&'],
             ' ',
             $text
         );
@@ -405,14 +433,46 @@ class BusinessClassifier
     }
 
     private function extractServiceKeywords(
-        string $haystack
+        string $haystack,
+        ?string $vertical
     ): array {
         $matches = [];
 
         foreach (self::SERVICE_KEYWORDS as $keyword) {
-            if ($this->containsPhrase($haystack, $keyword)) {
-                $matches[] = $keyword;
+            if (! $this->containsPhrase($haystack, $keyword)) {
+                continue;
             }
+
+            /*
+             * Prevent incidental HVAC/catalog words from becoming the
+             * defining services of a broader industrial company.
+             */
+            if (
+                $vertical === 'manufacturing'
+                && in_array(
+                    $keyword,
+                    [
+                        'plumbing',
+                        'emergency plumbing',
+                        'drain cleaning',
+                        'water heater',
+                        'pipe repair',
+                        'electrical',
+                        'electrical repair',
+                        'roofing',
+                        'roof repair',
+                        'waterproofing',
+                        'hvac',
+                        'air conditioning',
+                        'heating',
+                    ],
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $matches[] = $keyword;
         }
 
         return array_values(
@@ -436,7 +496,7 @@ class BusinessClassifier
         );
 
         $phrase = str_replace(
-            ['_', '-', '/', '\\'],
+            ['_', '-', '/', '\\', '&'],
             ' ',
             $phrase
         );

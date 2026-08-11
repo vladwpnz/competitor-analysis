@@ -23,6 +23,17 @@ class AnalysisController extends Controller
         GooglePlacesService $googlePlaces,
         CompetitorAnalysisService $competitorAnalysis
     ): RedirectResponse {
+        $normalizedWebsite =
+            $this->normalizeWebsiteInput(
+                $request->input('website')
+            );
+
+        if ($normalizedWebsite !== '') {
+            $request->merge([
+                'website' => $normalizedWebsite,
+            ]);
+        }
+
         $validated = $request->validate([
             'website' => [
                 'required',
@@ -309,6 +320,31 @@ class AnalysisController extends Controller
                         : [],
             ]
         );
+    }
+
+    private function normalizeWebsiteInput(
+        mixed $value
+    ): string {
+        if (! is_string($value)) {
+            return '';
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            return '';
+        }
+
+        if (
+            preg_match(
+                '#^https?://#i',
+                $value
+            ) !== 1
+        ) {
+            $value = 'https://' . $value;
+        }
+
+        return $value;
     }
 
     private function websiteHttpFailureStatus(

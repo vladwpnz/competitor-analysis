@@ -96,13 +96,13 @@ class CompetitorSearchServiceTest extends TestCase
         $this->assertIsFloat($candidates[0]['_match']['distance_km']);
     }
 
-    public function test_broader_business_uses_relevance_search(): void
+    public function test_broader_business_uses_business_country_context(): void
     {
         $google = Mockery::mock(GooglePlacesService::class);
 
         $google->shouldReceive('searchBusinesses')
             ->once()
-            ->with('Commercial Insurance Broker', 15)
+            ->with('Commercial Insurance Broker in Canada', 15)
             ->andReturn([
                 [
                     'id' => 'broker-1',
@@ -132,7 +132,14 @@ class CompetitorSearchServiceTest extends TestCase
 
         $this->assertCount(1, $candidates);
         $this->assertSame('broker-1', $candidates[0]['id']);
-        $this->assertSame(['relevance'], $candidates[0]['_match']['search_modes']);
+        $this->assertSame(
+            ['broader_country_context'],
+            $candidates[0]['_match']['search_modes']
+        );
+        $this->assertSame(
+            ['Commercial Insurance Broker in Canada'],
+            $candidates[0]['_match']['executed_queries']
+        );
     }
 
     public function test_it_can_exclude_own_business_by_name_without_place_id(): void

@@ -29,6 +29,8 @@ class SearchProfileBuilder
         'content',
         'the customer platform',
         'startups & small businesses',
+        'our world class brands',
+        'featured products',
     ];
 
     private const GENERIC_GOOGLE_TYPES = [
@@ -111,15 +113,19 @@ class SearchProfileBuilder
         $queryCandidates = [];
 
         if ($vertical === 'technology') {
-            /*
-             * For broad technology companies, specific product/category
-             * intent is more valuable than a generic "Software Company"
-             * query. CompetitorSearchService executes only the first four
-             * queries, so put CRM/platform/automation intent first and keep
-             * the generic business type as a fallback at the end.
-             */
             foreach (
                 $this->technologyQueries($services)
+                as $query
+            ) {
+                $queryCandidates[] = $query;
+            }
+
+            if ($businessType !== null) {
+                $queryCandidates[] = $businessType;
+            }
+        } elseif ($vertical === 'manufacturing') {
+            foreach (
+                $this->manufacturingQueries($services)
                 as $query
             ) {
                 $queryCandidates[] = $query;
@@ -307,6 +313,88 @@ class SearchProfileBuilder
         return null;
     }
 
+    private function manufacturingQueries(
+        array $services
+    ): array {
+        $queries = [];
+        $normalizedServices = array_map(
+            fn (string $service) =>
+                mb_strtolower($service),
+            $services
+        );
+
+        $hasAny = static function (
+            array $needles
+        ) use ($normalizedServices): bool {
+            foreach ($needles as $needle) {
+                if (
+                    in_array(
+                        mb_strtolower($needle),
+                        $normalizedServices,
+                        true
+                    )
+                ) {
+                    return true;
+                }
+            }
+
+            return false;
+        };
+
+        if ($hasAny(['motion control'])) {
+            $queries[] = 'Motion Control Supplier';
+        }
+
+        if (
+            $hasAny([
+                'industrial automation',
+                'automation solutions',
+                'electromechanical',
+                'drive control',
+            ])
+        ) {
+            $queries[] = 'Industrial Automation Supplier';
+        }
+
+        if (
+            $hasAny([
+                'fluid power',
+                'hydraulics',
+                'hydraulic',
+                'pneumatics',
+                'pneumatic',
+            ])
+        ) {
+            $queries[] = 'Fluid Power Distributor';
+        }
+
+        if (
+            $hasAny([
+                'industrial filtration',
+                'filtration systems',
+            ])
+        ) {
+            $queries[] = 'Industrial Filtration Supplier';
+        }
+
+        if (
+            $hasAny([
+                'industrial equipment',
+                'machinery',
+                'manufacturing',
+                'fabrication',
+            ])
+        ) {
+            $queries[] = 'Industrial Equipment Supplier';
+        }
+
+        if ($queries === []) {
+            $queries[] = 'Industrial Equipment Supplier';
+        }
+
+        return $queries;
+    }
+
     private function technologyQueries(
         array $services
     ): array {
@@ -361,6 +449,7 @@ class SearchProfileBuilder
             $hasAny([
                 'sales software',
                 'sales platform',
+                'crm',
             ])
         ) {
             $queries[] = 'Sales CRM Software Company';
@@ -439,6 +528,10 @@ class SearchProfileBuilder
         }
 
         $normalized = mb_strtolower($heading);
+
+        if (str_starts_with($normalized, 'welcome to ')) {
+            return null;
+        }
 
         if (in_array(
             $normalized,

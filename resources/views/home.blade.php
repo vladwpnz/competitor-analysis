@@ -133,10 +133,13 @@
                                 <input
                                     id="website"
                                     name="website"
-                                    type="url"
+                                    type="text"
                                     value="{{ $websiteValue }}"
                                     placeholder="https://yourwebsite.com"
                                     autocomplete="url"
+                                    inputmode="url"
+                                    autocapitalize="none"
+                                    spellcheck="false"
                                     @if ($editMode === 'google_business') readonly @endif
                                     @if ($editMode === 'website') autofocus @endif
                                     required
@@ -800,6 +803,10 @@ document.addEventListener('DOMContentLoaded', () => {
         'analysis-form'
     );
 
+    const websiteInput = document.getElementById(
+        'website'
+    );
+
     const businessInput = document.getElementById(
         'google_business'
     );
@@ -826,6 +833,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (
         !form
+        || !websiteInput
         || !businessInput
         || !placeIdInput
         || !sessionTokenInput
@@ -838,6 +846,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const searchEndpoint =
         @json(route('google-business.search'));
+
+    const normalizeWebsiteValue = () => {
+        const value =
+            websiteInput.value.trim();
+
+        if (value === '') {
+            return;
+        }
+
+        if (!/^https?:\/\//i.test(value)) {
+            websiteInput.value =
+                'https://' + value;
+
+            return;
+        }
+
+        websiteInput.value = value;
+    };
+
+    websiteInput.addEventListener(
+        'blur',
+        normalizeWebsiteValue
+    );
 
     const uuidPattern =
         /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -1423,6 +1454,8 @@ document.addEventListener('DOMContentLoaded', () => {
     form.addEventListener(
         'submit',
         event => {
+            normalizeWebsiteValue();
+
             clearTimeout(
                 debounceTimer
             );
