@@ -280,6 +280,15 @@ class AnalysisFlowTest extends TestCase
             $analysisResult
         );
 
+        $response->assertSessionHas(
+            'analysis.selected_competitors',
+            data_get(
+                $analysisResult,
+                'top_competitors',
+                []
+            )
+        );
+
         $page =
             $this->get(
                 route(
@@ -883,7 +892,7 @@ class AnalysisFlowTest extends TestCase
 
         $response->assertSessionHas(
             'analysis.website_scan_warning',
-            'We couldn’t read this website directly, so these matches are based mainly on the Google Business Profile.'
+            'We couldnвЂ™t read this website directly, so these matches are based mainly on the Google Business Profile.'
         );
     }
 

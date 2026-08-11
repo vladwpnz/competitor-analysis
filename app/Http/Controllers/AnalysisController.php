@@ -139,7 +139,7 @@ class AnalysisController extends Controller
                 );
 
                 $websiteScanWarning =
-                    'We couldn’t read this website directly, so these matches are based mainly on the Google Business Profile.';
+                    'We couldnвЂ™t read this website directly, so these matches are based mainly on the Google Business Profile.';
             }
         }
 
@@ -236,6 +236,25 @@ class AnalysisController extends Controller
 
             'analysis.result'
                 => $analysisResult,
+
+            /*
+             * Keep the user's editable competitor set separate from the
+             * ranked analysis result. Manual add/remove actions update this
+             * list without mutating the original ranking payload.
+             */
+            'analysis.selected_competitors'
+                => is_array($analysisResult)
+                    ? array_values(
+                        array_filter(
+                            data_get(
+                                $analysisResult,
+                                'top_competitors',
+                                []
+                            ),
+                            'is_array'
+                        )
+                    )
+                    : [],
         ]);
 
         return redirect()
@@ -279,13 +298,30 @@ class AnalysisController extends Controller
             'analysis.website_scan_warning'
         );
 
-        $topCompetitors = is_array($analysisResult)
-            ? data_get(
-                $analysisResult,
-                'top_competitors',
-                []
-            )
-            : [];
+        $selectedCompetitors = session(
+            'analysis.selected_competitors'
+        );
+
+        if (is_array($selectedCompetitors)) {
+            $topCompetitors = array_values(
+                array_filter(
+                    $selectedCompetitors,
+                    'is_array'
+                )
+            );
+        } else {
+            /*
+             * Backwards compatibility for sessions created before competitor
+             * customization was introduced.
+             */
+            $topCompetitors = is_array($analysisResult)
+                ? data_get(
+                    $analysisResult,
+                    'top_competitors',
+                    []
+                )
+                : [];
+        }
 
         return view(
             'competitors',
