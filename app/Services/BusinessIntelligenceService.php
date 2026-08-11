@@ -227,6 +227,20 @@ class BusinessIntelligenceService
             self::MARKET_SCOPES
         );
 
+        /*
+         * Gemini can legitimately vary between hybrid and broader for the
+         * same national business. Keep broad-market signals deterministic so
+         * one model response cannot turn a coast-to-coast / SaaS business back
+         * into distance-first matching.
+         */
+        $marketScope = $this->stabilizeMarketScope(
+            $marketScope,
+            $vertical,
+            $businessModel,
+            $businessType,
+            $businessProfile
+        );
+
         $confidence = $this->requiredEnum(
             $classification,
             'confidence',
@@ -575,6 +589,82 @@ class BusinessIntelligenceService
             0,
             $maxLength
         );
+    }
+
+    private function stabilizeMarketScope(
+        string $marketScope,
+        string $vertical,
+        string $businessModel,
+        string $businessType,
+        array $businessProfile
+    ): string {
+        if ($marketScope === 'broader') {
+            return 'broader';
+        }
+
+        $scopeText = implode(' ', array_filter([
+            data_get(
+                $businessProfile,
+                'classification_input.website_title'
+            ),
+            data_get(
+                $businessProfile,
+                'classification_input.website_description'
+            ),
+            data_get(
+                $businessProfile,
+                'classification_input.homepage_text'
+            ),
+        ], static fn (mixed $value): bool =>
+            is_string($value) && trim($value) !== ''
+        ));
+
+        $scopeText = mb_strtolower(
+            mb_substr($scopeText, 0, 12000)
+        );
+
+        $broaderSignals = [
+            'coast-to-coast',
+            'coast to coast',
+            'nationwide',
+            'across canada',
+            'throughout canada',
+            'across the united states',
+            'throughout the united states',
+            'across the usa',
+            'throughout the usa',
+            'across the country',
+            'worldwide',
+            'global customers',
+            'international customers',
+            'locations across',
+        ];
+
+        foreach ($broaderSignals as $signal) {
+            if (str_contains($scopeText, $signal)) {
+                return 'broader';
+            }
+        }
+
+        if ($vertical === 'technology') {
+            $modelText = mb_strtolower(
+                $businessModel . ' ' . $businessType
+            );
+
+            foreach ([
+                'saas',
+                'software platform',
+                'cloud platform',
+                'customer platform',
+                'crm platform',
+            ] as $signal) {
+                if (str_contains($modelText, $signal)) {
+                    return 'broader';
+                }
+            }
+        }
+
+        return $marketScope;
     }
 
     private function geographyWeight(

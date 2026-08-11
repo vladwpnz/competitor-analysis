@@ -223,6 +223,168 @@
                                         'primaryTypeDisplayName.text'
                                     );
 
+                                    /* Competitor category display refinement.
+                                     * Google may use a broad primary label such as
+                                     * "Manufacturer" even when the same Place also
+                                     * exposes supplier/distribution signals. We only
+                                     * refine broad labels when the selected business is
+                                     * being matched as a distributor/supplier and the
+                                     * candidate itself supports that role.
+                                     */
+                                    $targetBusinessType = data_get(
+                                        $analysisResult,
+                                        'search_profile.business_type',
+                                        ''
+                                    );
+
+                                    $targetVertical = data_get(
+                                        $analysisResult,
+                                        'search_profile.vertical',
+                                        ''
+                                    );
+
+                                    $targetQueries = data_get(
+                                        $analysisResult,
+                                        'search_profile.search_queries',
+                                        []
+                                    );
+
+                                    $targetRoleParts = [
+                                        is_string($targetBusinessType)
+                                            ? $targetBusinessType
+                                            : '',
+                                    ];
+
+                                    if (is_array($targetQueries)) {
+                                        foreach ($targetQueries as $targetQuery) {
+                                            if (is_string($targetQuery)) {
+                                                $targetRoleParts[] = $targetQuery;
+                                            }
+                                        }
+                                    }
+
+                                    $targetRoleText = mb_strtolower(
+                                        implode(' ', $targetRoleParts)
+                                    );
+
+                                    $targetsDistributorRole = preg_match(
+                                        '/\b(distributor|distribution|supplier|wholesaler|wholesale)\b/u',
+                                        $targetRoleText
+                                    ) === 1;
+
+                                    $candidateRoleParts = [
+                                        $name,
+                                        is_string($primaryType) ? $primaryType : '',
+                                        is_string($category) ? $category : '',
+                                    ];
+
+                                    $candidateTypes = data_get(
+                                        $competitor,
+                                        'types',
+                                        []
+                                    );
+
+                                    if (is_array($candidateTypes)) {
+                                        foreach ($candidateTypes as $candidateType) {
+                                            if (is_string($candidateType)) {
+                                                $candidateRoleParts[] = $candidateType;
+                                            }
+                                        }
+                                    }
+
+                                    $candidateRoleText = mb_strtolower(
+                                        implode(' ', $candidateRoleParts)
+                                    );
+
+                                    $candidateHasDistributorRole = preg_match(
+                                        '/\b(distributor|distribution|supplier|wholesaler|wholesale|supply|sales)\b/u',
+                                        $candidateRoleText
+                                    ) === 1;
+
+                                    $normalizedGoogleCategory = is_string($category)
+                                        ? mb_strtolower(trim($category))
+                                        : '';
+
+                                    $broadGoogleCategories = [
+                                        '',
+                                        'manufacturer',
+                                        'supplier',
+                                        'service',
+                                        'point of interest',
+                                        'establishment',
+                                    ];
+
+                                    if (
+                                        $targetsDistributorRole
+                                        && $candidateHasDistributorRole
+                                        && in_array(
+                                            $normalizedGoogleCategory,
+                                            $broadGoogleCategories,
+                                            true
+                                        )
+                                    ) {
+                                        $matchedQueries = data_get(
+                                            $competitor,
+                                            '_match.queries',
+                                            []
+                                        );
+
+                                        if (is_array($matchedQueries)) {
+                                            foreach ($matchedQueries as $matchedQuery) {
+                                                if (!is_string($matchedQuery)) {
+                                                    continue;
+                                                }
+
+                                                $displayIntent = mb_strtolower(
+                                                    trim($matchedQuery)
+                                                );
+
+                                                if (
+                                                    preg_match(
+                                                        '/\b(distributor|distribution|supplier|wholesaler|wholesale|integrator|integration)\b/u',
+                                                        $displayIntent
+                                                    ) !== 1
+                                                ) {
+                                                    continue;
+                                                }
+
+                                                $displayIntent = preg_replace(
+                                                    '/\bsupplier\s+and\s+integration\b/u',
+                                                    'supplier & systems integrator',
+                                                    $displayIntent
+                                                ) ?? $displayIntent;
+
+                                                $displayIntent = preg_replace(
+                                                    '/\s+and\s+/u',
+                                                    ' & ',
+                                                    $displayIntent
+                                                ) ?? $displayIntent;
+
+                                                $category = mb_convert_case(
+                                                    $displayIntent,
+                                                    MB_CASE_TITLE,
+                                                    'UTF-8'
+                                                );
+
+                                                break;
+                                            }
+                                        }
+
+                                        if (
+                                            !is_string($category)
+                                            || trim($category) === ''
+                                            || in_array(
+                                                mb_strtolower(trim($category)),
+                                                $broadGoogleCategories,
+                                                true
+                                            )
+                                        ) {
+                                            $category = $targetVertical === 'industrial'
+                                                ? 'Industrial Supplier'
+                                                : 'Supplier / Distributor';
+                                        }
+                                    }
+
                                     if (
                                         (!is_string($category) || trim($category) === '')
                                         && is_string($primaryType)

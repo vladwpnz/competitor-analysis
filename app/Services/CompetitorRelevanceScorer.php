@@ -31,9 +31,18 @@ class CompetitorRelevanceScorer
             $scored[] = $candidate;
         }
 
+        $preferDistance = (string) data_get(
+            $searchProfile,
+            'market_scope',
+            'hybrid'
+        ) !== 'broader';
+
         usort(
             $scored,
-            function (array $left, array $right): int {
+            function (
+                array $left,
+                array $right
+            ) use ($preferDistance): int {
                 $leftCompatible = (bool) data_get(
                     $left,
                     '_relevance.type_compatible',
@@ -82,15 +91,30 @@ class CompetitorRelevanceScorer
                     return $rightHits <=> $leftHits;
                 }
 
-                return $this->compareDistance(
-                    data_get(
+                if ($preferDistance) {
+                    return $this->compareDistance(
+                        data_get(
+                            $left,
+                            '_match.distance_km'
+                        ),
+                        data_get(
+                            $right,
+                            '_match.distance_km'
+                        )
+                    );
+                }
+
+                return strcmp(
+                    mb_strtolower((string) data_get(
                         $left,
-                        '_match.distance_km'
-                    ),
-                    data_get(
+                        'displayName.text',
+                        ''
+                    )),
+                    mb_strtolower((string) data_get(
                         $right,
-                        '_match.distance_km'
-                    )
+                        'displayName.text',
+                        ''
+                    ))
                 );
             }
         );
@@ -116,9 +140,17 @@ class CompetitorRelevanceScorer
             $marketScope
         );
 
-        $typeRatio = $this->typeSimilarity(
+        $roleRatio = $this->businessRoleEvidence(
             $candidate,
             $searchProfile
+        );
+
+        $typeRatio = max(
+            $this->typeSimilarity(
+                $candidate,
+                $searchProfile
+            ),
+            $roleRatio
         );
 
         $queryRatio = $this->queryEvidence(
@@ -203,6 +235,27 @@ class CompetitorRelevanceScorer
             );
         }
 
+        $focusedIndustrialDistributorSearch =
+            $marketScope === 'broader'
+            && data_get($searchProfile, 'vertical') === 'industrial'
+            && $this->targetsDistributorModel($searchProfile);
+
+        /*
+         * Google often labels industrial distributors as Manufacturer.
+         * For an AI-classified distributor target, prefer candidates that
+         * expose supplier/distributor/sales evidence, but keep manufacturer-
+         * only results as a fallback when the candidate pool is thin.
+         */
+        if (
+            $focusedIndustrialDistributorSearch
+            && $roleRatio < 0.5
+        ) {
+            $score = round(
+                $score * 0.45,
+                2
+            );
+        }
+
         /*
          * Query hits alone are not enough to make a local business
          * a strong competitor. Google can return adjacent categories
@@ -213,6 +266,9 @@ class CompetitorRelevanceScorer
         $typeCompatible = match (true) {
             $focusedTechnologySearch =>
                 $technologyIntentRatio >= 0.25,
+
+            $focusedIndustrialDistributorSearch =>
+                $roleRatio >= 0.5,
 
             $marketScope === 'local' =>
                 $typeRatio >= 0.45
@@ -275,8 +331,125 @@ class CompetitorRelevanceScorer
                         $technologyIntentRatio,
                         3
                     ),
+
+                'business_role_ratio' =>
+                    round(
+                        $roleRatio,
+                        3
+                    ),
             ],
         ];
+    }
+
+    private function targetsDistributorModel(
+        array $searchProfile
+    ): bool {
+        $targetText = [
+            data_get($searchProfile, 'business_type'),
+            data_get($searchProfile, 'business_model'),
+        ];
+
+        foreach ([
+            'competitor_types',
+            'search_queries',
+        ] as $field) {
+            $values = data_get($searchProfile, $field, []);
+
+            if (is_array($values)) {
+                $targetText = array_merge(
+                    $targetText,
+                    $values
+                );
+            }
+        }
+
+        $haystack = $this->normalizePhrase(
+            implode(
+                ' ',
+                array_filter(
+                    $targetText,
+                    fn ($value) => is_string($value)
+                        && trim($value) !== ''
+                )
+            )
+        );
+
+        if ($haystack === null) {
+            return false;
+        }
+
+        foreach ([
+            'distributor',
+            'distribution',
+            'supplier',
+            'wholesaler',
+            'wholesale',
+        ] as $signal) {
+            if ($this->containsPhrase($haystack, $signal)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function businessRoleEvidence(
+        array $candidate,
+        array $searchProfile
+    ): float {
+        if (! $this->targetsDistributorModel($searchProfile)) {
+            return 0.0;
+        }
+
+        $candidateText = [
+            data_get($candidate, 'displayName.text'),
+            data_get($candidate, 'primaryType'),
+            data_get($candidate, 'primaryTypeDisplayName.text'),
+        ];
+
+        $types = data_get($candidate, 'types', []);
+
+        if (is_array($types)) {
+            $candidateText = array_merge(
+                $candidateText,
+                $types
+            );
+        }
+
+        $haystack = $this->normalizePhrase(
+            implode(
+                ' ',
+                array_filter(
+                    $candidateText,
+                    fn ($value) => is_string($value)
+                        && trim($value) !== ''
+                )
+            )
+        );
+
+        if ($haystack === null) {
+            return 0.0;
+        }
+
+        foreach ([
+            'distributor',
+            'distribution',
+            'supplier',
+            'wholesaler',
+            'wholesale',
+            'supply',
+            'sales',
+        ] as $signal) {
+            if ($this->containsPhrase($haystack, $signal)) {
+                return 0.9;
+            }
+        }
+
+        if ($this->containsPhrase($haystack, 'manufacturer')) {
+            return 0.1;
+        }
+
+        return 0.0;
     }
 
     private function hasFocusedTechnologyIntent(
