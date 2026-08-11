@@ -43,11 +43,11 @@
         </a>
 
         <nav class="main-nav" aria-label="Primary navigation">
-            <a href="#">Platform <span class="nav-chevron">вЊ„</span></a>
-            <a href="#">Solutions <span class="nav-chevron">вЊ„</span></a>
-            <a href="#">Resources <span class="nav-chevron">вЊ„</span></a>
+            <a href="#">Platform <span class="nav-chevron">⌄</span></a>
+            <a href="#">Solutions <span class="nav-chevron">⌄</span></a>
+            <a href="#">Resources <span class="nav-chevron">⌄</span></a>
             <a href="#">Pricing</a>
-            <a href="#">Company <span class="nav-chevron">вЊ„</span></a>
+            <a href="#">Company <span class="nav-chevron">⌄</span></a>
         </nav>
 
         <div class="header-actions">
@@ -66,7 +66,7 @@
 
             @if ($hasAnalysis)
                 <h1>
-                    WeвЂ™ve Found
+                    We’ve Found
                     <span id="competitor-count-heading">
                         {{ count($topCompetitors) }}
                     </span>
@@ -81,12 +81,12 @@
                 </p>
             @else
                 <h1>
-                    WeвЂ™re Preparing Your
+                    We’re Preparing Your
                     <strong>Most Relevant Competitors</strong>
                 </h1>
 
                 <p class="competitors-intro">
-                    Your business information has been received. WeвЂ™ll use your
+                    Your business information has been received. We’ll use your
                     website, Google Business data and market signals to find
                     the most relevant competitors.
                 </p>
@@ -184,7 +184,7 @@
                             class="step2-add-button js-add-competitor"
                             @disabled($isPreview)
                         >
-                            <span aria-hidden="true">пј‹</span>
+                            <span aria-hidden="true">＋</span>
                             Add Competitor
                         </button>
                     </div>
@@ -370,14 +370,14 @@
                                                     style="--rating: {{ min(5, max(0, (float) $rating)) }}"
                                                     aria-label="{{ number_format((float) $rating, 1) }} out of 5 stars"
                                                 >
-                                                    в…в…в…в…в…
+                                                    ★★★★★
                                                 </span>
                                             </div>
                                         @else
                                             <div class="step2-rating-line">
-                                                <strong>вЂ”</strong>
+                                                <strong>—</strong>
                                                 <span class="step2-stars step2-stars-empty">
-                                                    в…в…в…в…в…
+                                                    ★★★★★
                                                 </span>
                                             </div>
                                         @endif
@@ -408,7 +408,7 @@
                             @if (!empty($topCompetitors)) hidden @endif
                         >
                             <strong>No competitors selected yet.</strong>
-                            <span>Use вЂњAdd CompetitorвЂќ to choose at least one business.</span>
+                            <span>Use “Add Competitor” to choose at least one business.</span>
                         </div>
 
                         <button
@@ -416,12 +416,12 @@
                             class="step2-add-another js-add-competitor"
                             @disabled($isPreview)
                         >
-                            <span class="step2-add-another-icon" aria-hidden="true">пј‹</span>
+                            <span class="step2-add-another-icon" aria-hidden="true">＋</span>
                             <span class="step2-add-another-copy">
                                 <strong>Add Another Competitor</strong>
                                 <small>Search by business name or website</small>
                             </span>
-                            <span class="step2-add-another-arrow" aria-hidden="true">вЂє</span>
+                            <span class="step2-add-another-arrow" aria-hidden="true">›</span>
                         </button>
 
                         <button
@@ -432,7 +432,7 @@
                             @disabled(empty($topCompetitors) || $isPreview)
                         >
                             <span>Start Free Analysis</span>
-                            <span aria-hidden="true">в†’</span>
+                            <span aria-hidden="true">→</span>
                         </button>
 
                         <div class="step2-trust">
@@ -483,7 +483,7 @@
             id="add-competitor-close"
             aria-label="Close"
         >
-            Г—
+            ×
         </button>
 
         <div class="step2-modal-kicker">CUSTOMIZE YOUR LIST</div>
@@ -541,8 +541,8 @@
 
             <div class="social-links">
                 <a href="#" aria-label="LinkedIn">in</a>
-                <a href="#" aria-label="X">рќ•Џ</a>
-                <a href="#" aria-label="YouTube">в–¶</a>
+                <a href="#" aria-label="X">𝕏</a>
+                <a href="#" aria-label="YouTube">▶</a>
                 <a href="#" aria-label="Facebook">f</a>
             </div>
         </div>
@@ -583,7 +583,7 @@
     </div>
 
     <div class="container footer-bottom">
-        <span>В© 2025 Intellytics Inc. All rights reserved.</span>
+        <span>© 2025 Intellytics Inc. All rights reserved.</span>
         <div>
             <a href="#">Privacy Policy</a>
             <a href="#">Terms of Service</a>
@@ -1115,7 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const stars =
             document.createElement('span');
         stars.className = 'step2-stars';
-        stars.textContent = 'в…в…в…в…в…';
+        stars.textContent = '★★★★★';
 
         if (
             competitor.rating !== null
@@ -1144,7 +1144,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     + ' out of 5 stars'
             );
         } else {
-            ratingValue.textContent = 'вЂ”';
+            ratingValue.textContent = '—';
             stars.classList.add(
                 'step2-stars-empty'
             );
@@ -1232,7 +1232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.createElement('span');
 
                 secondary.textContent =
-                    secondaryParts.join(' В· ');
+                    secondaryParts.join(' · ');
 
                 button.appendChild(secondary);
             }
@@ -1325,7 +1325,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         addingPlaceId = placeId;
-        setModalStatus('Adding competitorвЂ¦');
+        setModalStatus('Adding competitor…');
         showLoader(true);
 
         try {
@@ -1556,3 +1556,4 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 @endsection
+
