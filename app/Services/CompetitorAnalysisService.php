@@ -27,12 +27,30 @@ class CompetitorAnalysisService
             $googlePlace
         );
 
-        $classification = $this->businessClassifier->classify(
+        /*
+         * AI classification is optional. BusinessIntelligenceService falls
+         * back to the existing BusinessClassifier when no provider/key is
+         * configured or when the AI request fails.
+         *
+         * Resolve it here instead of changing this constructor so existing
+         * tests/manual service construction and the current pipeline remain
+         * backwards compatible.
+         */
+        $businessIntelligence = app(
+            BusinessIntelligenceService::class
+        );
+
+        $classification = $businessIntelligence->classify(
             $businessProfile
         );
 
         $searchProfile = $this->searchProfileBuilder->build(
             $businessProfile,
+            $classification
+        );
+
+        $searchProfile = $businessIntelligence->applySearchIntent(
+            $searchProfile,
             $classification
         );
 

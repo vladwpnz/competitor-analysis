@@ -1,0 +1,774 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Contracts\AiBusinessClassifier;
+use App\Services\AiBusinessClassifierManager;
+use App\Services\BusinessClassifier;
+use App\Services\BusinessIntelligenceService;
+use Mockery;
+use RuntimeException;
+use Tests\TestCase;
+
+class BusinessIntelligenceServiceTest extends TestCase
+{
+    public function test_ai_classifies_wainbee_like_business_as_distributor_and_overrides_search_intent(): void
+    {
+        $profile = $this->wainbeeLikeProfile();
+
+        $service = $this->serviceWithAiResult(
+            $this->industrialDistributorAiResult()
+        );
+
+        $classification = $service->classify(
+            $profile
+        );
+
+        $this->assertSame(
+            'ai',
+            $classification[
+                '_classification_source'
+            ]
+        );
+
+        $this->assertSame(
+            'industrial distributor and systems integrator',
+            $classification[
+                'business_model'
+            ]
+        );
+
+        $this->assertSame(
+            'Industrial Automation Distributor',
+            $classification[
+                'business_type'
+            ]
+        );
+
+        $this->assertSame(
+            'broader',
+            $classification[
+                'market_scope'
+            ]
+        );
+
+        $this->assertSame(
+            'low',
+            $classification[
+                'geography_weight'
+            ]
+        );
+
+        $this->assertSame(
+            [
+                'Motion Control Distributor',
+                'Industrial Automation Distributor',
+                'Fluid Power Distributor',
+                'Industrial Filtration Distributor',
+            ],
+            $classification[
+                'search_queries'
+            ]
+        );
+
+        $searchProfile = $service->applySearchIntent(
+            $this->baseSearchProfile(),
+            $classification
+        );
+
+        $this->assertSame(
+            'Industrial Automation Distributor',
+            $searchProfile[
+                'business_type'
+            ]
+        );
+
+        $this->assertSame(
+            $classification[
+                'search_queries'
+            ],
+            $searchProfile[
+                'search_queries'
+            ]
+        );
+
+        $this->assertSame(
+            'broader',
+            $searchProfile[
+                'market_scope'
+            ]
+        );
+
+        $this->assertSame(
+            'low',
+            $searchProfile[
+                'geography_weight'
+            ]
+        );
+    }
+
+    public function test_ai_keeps_local_plumber_local_and_distance_weighted(): void
+    {
+        $service = $this->serviceWithAiResult([
+            'business_model'
+                => 'local service provider',
+
+            'business_type'
+                => 'Plumber',
+
+            'vertical'
+                => 'home_services',
+
+            'industry'
+                => 'Residential and commercial plumbing',
+
+            'market_scope'
+                => 'local',
+
+            'products_services' => [
+                'plumbing',
+                'drain cleaning',
+                'water heater repair',
+            ],
+
+            'target_customers' => [
+                'homeowners',
+                'local businesses',
+            ],
+
+            'competitor_types' => [
+                'plumber',
+                'plumbing contractor',
+            ],
+
+            'search_queries' => [
+                'Plumber',
+                'Emergency Plumber',
+                'Drain Cleaning Service',
+                'Water Heater Repair',
+            ],
+
+            'geography_weight'
+                => 'high',
+
+            'confidence'
+                => 'high',
+        ]);
+
+        $classification = $service->classify(
+            $this->plumberLikeProfile()
+        );
+
+        $this->assertSame(
+            'local',
+            $classification[
+                'market_scope'
+            ]
+        );
+
+        $this->assertSame(
+            'high',
+            $classification[
+                'geography_weight'
+            ]
+        );
+
+        $this->assertSame(
+            [
+                50,
+                100,
+                300,
+            ],
+            $classification[
+                'radius_strategy_km'
+            ]
+        );
+    }
+
+    public function test_ai_keeps_hubspot_like_saas_broader_and_technology_focused(): void
+    {
+        $service = $this->serviceWithAiResult([
+            'business_model'
+                => 'SaaS company',
+
+            'business_type'
+                => 'CRM Software Company',
+
+            'vertical'
+                => 'technology',
+
+            'industry'
+                => 'CRM and customer platform software',
+
+            'market_scope'
+                => 'broader',
+
+            'products_services' => [
+                'crm',
+                'customer platform',
+                'marketing automation',
+                'sales software',
+            ],
+
+            'target_customers' => [
+                'businesses',
+                'sales teams',
+                'marketing teams',
+            ],
+
+            'competitor_types' => [
+                'CRM software company',
+                'customer platform software company',
+            ],
+
+            'search_queries' => [
+                'CRM Software Company',
+                'Customer Platform Software Company',
+                'Marketing Automation Software Company',
+                'Sales CRM Software Company',
+            ],
+
+            'geography_weight'
+                => 'low',
+
+            'confidence'
+                => 'high',
+        ]);
+
+        $classification = $service->classify(
+            $this->hubspotLikeProfile()
+        );
+
+        $this->assertSame(
+            'technology',
+            $classification[
+                'vertical'
+            ]
+        );
+
+        $this->assertSame(
+            'broader',
+            $classification[
+                'market_scope'
+            ]
+        );
+
+        $this->assertSame(
+            'low',
+            $classification[
+                'geography_weight'
+            ]
+        );
+
+        $this->assertSame(
+            'CRM Software Company',
+            $classification[
+                'business_type'
+            ]
+        );
+    }
+
+    public function test_unconfigured_ai_returns_exact_heuristic_fallback(): void
+    {
+        $profile = $this->wainbeeLikeProfile();
+
+        $fallback = app(
+            BusinessClassifier::class
+        );
+
+        $manager = Mockery::mock(
+            AiBusinessClassifierManager::class
+        );
+
+        $provider = $this->fakeProvider(
+            $this->industrialDistributorAiResult(),
+            false
+        );
+
+        $manager
+            ->shouldReceive('driver')
+            ->once()
+            ->andReturn(
+                $provider
+            );
+
+        $service = new BusinessIntelligenceService(
+            $fallback,
+            $manager
+        );
+
+        $this->assertSame(
+            $fallback->classify(
+                $profile
+            ),
+            $service->classify(
+                $profile
+            )
+        );
+    }
+
+    public function test_api_failure_returns_exact_heuristic_fallback(): void
+    {
+        $profile = $this->wainbeeLikeProfile();
+
+        $fallback = app(
+            BusinessClassifier::class
+        );
+
+        $manager = Mockery::mock(
+            AiBusinessClassifierManager::class
+        );
+
+        $provider = new class implements AiBusinessClassifier {
+            public function name(): string
+            {
+                return 'fake-ai';
+            }
+
+            public function isConfigured(): bool
+            {
+                return true;
+            }
+
+            public function classify(
+                array $businessProfile
+            ): array {
+                throw new RuntimeException(
+                    'Simulated quota or timeout error.'
+                );
+            }
+        };
+
+        $manager
+            ->shouldReceive('driver')
+            ->once()
+            ->andReturn(
+                $provider
+            );
+
+        $service = new BusinessIntelligenceService(
+            $fallback,
+            $manager
+        );
+
+        $this->assertSame(
+            $fallback->classify(
+                $profile
+            ),
+            $service->classify(
+                $profile
+            )
+        );
+    }
+
+    public function test_invalid_ai_payload_returns_exact_heuristic_fallback(): void
+    {
+        $profile = $this->wainbeeLikeProfile();
+
+        $fallback = app(
+            BusinessClassifier::class
+        );
+
+        $service = $this->serviceWithAiResult([
+            'business_model'
+                => 'distributor',
+        ]);
+
+        $this->assertSame(
+            $fallback->classify(
+                $profile
+            ),
+            $service->classify(
+                $profile
+            )
+        );
+    }
+
+    public function test_ai_search_queries_are_limited_to_four_and_subject_name_is_removed(): void
+    {
+        $result = $this->industrialDistributorAiResult();
+
+        $result['search_queries'] = [
+            'Example Industrial Co competitor',
+            'Motion Control Distributor',
+            'Industrial Automation Distributor',
+            'Fluid Power Distributor',
+            'Industrial Filtration Distributor',
+            'Hydraulic Equipment Distributor',
+        ];
+
+        $service = $this->serviceWithAiResult(
+            $result
+        );
+
+        $classification = $service->classify(
+            $this->wainbeeLikeProfile()
+        );
+
+        $this->assertCount(
+            4,
+            $classification[
+                'search_queries'
+            ]
+        );
+
+        $this->assertNotContains(
+            'Example Industrial Co competitor',
+            $classification[
+                'search_queries'
+            ]
+        );
+    }
+
+    public function test_fallback_search_profile_is_not_modified(): void
+    {
+        $fallbackClassification = app(
+            BusinessClassifier::class
+        )->classify(
+            $this->wainbeeLikeProfile()
+        );
+
+        $manager = Mockery::mock(
+            AiBusinessClassifierManager::class
+        );
+
+        $manager
+            ->shouldReceive('driver')
+            ->never();
+
+        $service = new BusinessIntelligenceService(
+            app(
+                BusinessClassifier::class
+            ),
+            $manager
+        );
+
+        $searchProfile = $this->baseSearchProfile();
+
+        $this->assertSame(
+            $searchProfile,
+            $service->applySearchIntent(
+                $searchProfile,
+                $fallbackClassification
+            )
+        );
+    }
+
+    private function serviceWithAiResult(
+        array $result
+    ): BusinessIntelligenceService {
+        $manager = Mockery::mock(
+            AiBusinessClassifierManager::class
+        );
+
+        $manager
+            ->shouldReceive('driver')
+            ->once()
+            ->andReturn(
+                $this->fakeProvider(
+                    $result
+                )
+            );
+
+        return new BusinessIntelligenceService(
+            app(
+                BusinessClassifier::class
+            ),
+            $manager
+        );
+    }
+
+    private function fakeProvider(
+        array $result,
+        bool $configured = true
+    ): AiBusinessClassifier {
+        return new class(
+            $result,
+            $configured
+        ) implements AiBusinessClassifier {
+            public function __construct(
+                private readonly array $result,
+                private readonly bool $configured
+            ) {
+            }
+
+            public function name(): string
+            {
+                return 'fake-ai';
+            }
+
+            public function isConfigured(): bool
+            {
+                return $this->configured;
+            }
+
+            public function classify(
+                array $businessProfile
+            ): array {
+                return $this->result;
+            }
+        };
+    }
+
+    private function industrialDistributorAiResult(): array
+    {
+        return [
+            'business_model'
+                => 'industrial distributor and systems integrator',
+
+            'business_type'
+                => 'Industrial Automation Distributor',
+
+            'vertical'
+                => 'industrial',
+
+            'industry'
+                => 'Industrial automation, motion control and fluid power',
+
+            'market_scope'
+                => 'broader',
+
+            'products_services' => [
+                'motion control',
+                'industrial automation',
+                'fluid power',
+                'industrial filtration',
+                'hydraulics',
+                'pneumatics',
+                'electromechanical solutions',
+            ],
+
+            'target_customers' => [
+                'manufacturers',
+                'industrial facilities',
+                'OEMs',
+            ],
+
+            'competitor_types' => [
+                'industrial automation distributor',
+                'motion control distributor',
+                'fluid power distributor',
+            ],
+
+            'search_queries' => [
+                'Motion Control Distributor',
+                'Industrial Automation Distributor',
+                'Fluid Power Distributor',
+                'Industrial Filtration Distributor',
+            ],
+
+            'geography_weight'
+                => 'low',
+
+            'confidence'
+                => 'high',
+        ];
+    }
+
+    private function baseSearchProfile(): array
+    {
+        return [
+            'business_type'
+                => 'Manufacturer',
+
+            'services' => [
+                'motion control',
+                'industrial automation',
+            ],
+
+            'search_queries' => [
+                'Motion Control Supplier',
+                'Industrial Automation Supplier',
+                'Fluid Power Distributor',
+                'Industrial Filtration Supplier',
+            ],
+
+            'vertical'
+                => 'manufacturing',
+
+            'market_scope'
+                => 'broader',
+
+            'geography_weight'
+                => 'low',
+
+            'radius_strategy_km' => [
+                300,
+                1000,
+                3000,
+            ],
+
+            'location' => [
+                'latitude'
+                    => 43.6334199,
+
+                'longitude'
+                    => -79.6604936,
+
+                'address'
+                    => '5789 Coopers Ave, Mississauga, ON L4Z 3S6, Canada',
+            ],
+
+            'exclude' => [
+                'place_id'
+                    => 'example-place',
+
+                'business_name'
+                    => 'Example Industrial Co',
+
+                'website_host'
+                    => 'example-industrial.test',
+            ],
+
+            'classification_confidence'
+                => 'high',
+        ];
+    }
+
+    private function wainbeeLikeProfile(): array
+    {
+        return [
+            'classification_input' => [
+                'business_name'
+                    => 'Example Industrial Co',
+
+                'website_title'
+                    => 'Industrial Solutions for Engineered Systems',
+
+                'website_description'
+                    => 'Motion & Control, Industrial Filtration and Automation Solutions',
+
+                'homepage_text'
+                    => 'We distribute and integrate hydraulic, pneumatic, electromechanical and drive control systems for industrial customers.',
+
+                'primary_type'
+                    => 'manufacturer',
+
+                'primary_type_name'
+                    => 'Manufacturer',
+
+                'google_types' => [
+                    'manufacturer',
+                    'establishment',
+                ],
+
+                'headings' => [
+                    'Our World Class Brands',
+                    'Featured Products',
+                ],
+            ],
+
+            'location' => [
+                'latitude'
+                    => 43.6334199,
+
+                'longitude'
+                    => -79.6604936,
+
+                'address'
+                    => '5789 Coopers Ave, Mississauga, ON L4Z 3S6, Canada',
+            ],
+
+            'google_business' => [
+                'place_id'
+                    => 'example-place',
+            ],
+
+            'website' => [
+                'url'
+                    => 'https://example-industrial.test/',
+            ],
+        ];
+    }
+
+    private function plumberLikeProfile(): array
+    {
+        return [
+            'classification_input' => [
+                'business_name'
+                    => 'Acme Plumbing',
+
+                'website_title'
+                    => 'Acme Plumbing | Emergency Plumbing Services',
+
+                'website_description'
+                    => 'Local plumber providing emergency plumbing, drain cleaning and water heater repairs.',
+
+                'homepage_text'
+                    => 'Acme Plumbing provides plumbing, emergency plumbing, drain cleaning, pipe repair and water heater services.',
+
+                'primary_type'
+                    => 'plumber',
+
+                'primary_type_name'
+                    => 'Plumber',
+
+                'google_types' => [
+                    'plumber',
+                ],
+            ],
+
+            'location' => [
+                'latitude'
+                    => 43.6532,
+
+                'longitude'
+                    => -79.3832,
+
+                'address'
+                    => '100 Main St, Toronto, ON, Canada',
+            ],
+
+            'website' => [
+                'url'
+                    => 'https://acmeplumbing.test/',
+            ],
+        ];
+    }
+
+    private function hubspotLikeProfile(): array
+    {
+        return [
+            'classification_input' => [
+                'business_name'
+                    => 'Example CRM',
+
+                'website_title'
+                    => 'CRM, Marketing, Sales and Customer Platform',
+
+                'website_description'
+                    => 'Customer platform with CRM, marketing automation, sales and customer service software.',
+
+                'homepage_text'
+                    => 'Software for marketing, sales, customer service and go-to-market teams.',
+
+                'primary_type'
+                    => 'service',
+
+                'primary_type_name'
+                    => 'Service',
+
+                'google_types' => [
+                    'service',
+                    'establishment',
+                ],
+            ],
+
+            'location' => [
+                'latitude'
+                    => 42.3701334,
+
+                'longitude'
+                    => -71.0763725,
+
+                'address'
+                    => '2 Canal Park, Cambridge, MA 02141, USA',
+            ],
+
+            'website' => [
+                'url'
+                    => 'https://example-crm.test/',
+            ],
+        ];
+    }
+}
