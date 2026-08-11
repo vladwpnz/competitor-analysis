@@ -355,6 +355,17 @@ class CompetitorAnalysisService
     private function candidateKey(
         array $candidate
     ): ?string {
+        $name = $this->normalizeText(
+            data_get(
+                $candidate,
+                'displayName.text'
+            )
+        );
+
+        if ($name !== null) {
+            return 'name:' . $name;
+        }
+
         $placeId = data_get(
             $candidate,
             'id'
@@ -367,28 +378,7 @@ class CompetitorAnalysisService
             return 'place:' . trim($placeId);
         }
 
-        $name = $this->normalizeText(
-            data_get(
-                $candidate,
-                'displayName.text'
-            )
-        );
-
-        if ($name === null) {
-            return null;
-        }
-
-        $address = $this->normalizeText(
-            data_get(
-                $candidate,
-                'formattedAddress'
-            )
-        );
-
-        return 'fallback:'
-            . $name
-            . '|'
-            . ($address ?? '');
+        return null;
     }
 
     private function normalizeText(
