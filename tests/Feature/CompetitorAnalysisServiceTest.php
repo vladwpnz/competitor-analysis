@@ -3,11 +3,13 @@
 namespace Tests\Feature;
 
 use App\Services\BusinessClassifier;
+use App\Services\BusinessIntelligenceService;
 use App\Services\BusinessProfileBuilder;
 use App\Services\CompetitorAnalysisService;
 use App\Services\CompetitorEnrichmentService;
 use App\Services\CompetitorRelevanceScorer;
 use App\Services\CompetitorSearchService;
+use App\Services\GeminiCompetitorDiscoveryService;
 use App\Services\SearchProfileBuilder;
 use Mockery;
 use Tests\TestCase;
@@ -295,6 +297,361 @@ class CompetitorAnalysisServiceTest extends TestCase
             $competitorTwo[
                 '_match'
             ]['search_modes']
+        );
+    }
+
+    public function test_digital_global_analysis_uses_direct_ai_competitors_without_google_places(): void
+    {
+        $businessIntelligence = Mockery::mock(
+            BusinessIntelligenceService::class
+        );
+
+        $businessIntelligence
+            ->shouldReceive('classify')
+            ->once()
+            ->andReturn([
+                'business_model' => 'SaaS company',
+                'business_type' => 'CRM Software Provider',
+                'vertical' => 'technology',
+                'market_scope' => 'broader',
+                'geography_weight' => 'low',
+                'radius_strategy_km' => [300, 1000, 3000],
+                'service_keywords' => [
+                    'crm',
+                    'marketing automation',
+                ],
+                'search_queries' => [
+                    'CRM software provider',
+                ],
+                'discovery_mode' => 'digital_global',
+                'confidence' => 'high',
+                '_classification_source' => 'ai',
+            ]);
+
+        $businessIntelligence
+            ->shouldReceive('applySearchIntent')
+            ->once()
+            ->andReturnUsing(
+                static function (
+                    array $searchProfile,
+                    array $classification
+                ): array {
+                    $searchProfile['business_type']
+                        = $classification['business_type'];
+                    $searchProfile['vertical']
+                        = 'technology';
+                    $searchProfile['market_scope']
+                        = 'broader';
+                    $searchProfile['geography_weight']
+                        = 'low';
+                    $searchProfile['discovery_mode']
+                        = 'digital_global';
+
+                    return $searchProfile;
+                }
+            );
+
+        $this->app->instance(
+            BusinessIntelligenceService::class,
+            $businessIntelligence
+        );
+
+        $discovery = Mockery::mock(
+            GeminiCompetitorDiscoveryService::class
+        );
+
+        $discovery
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturnTrue();
+
+        $discovery
+            ->shouldReceive('discover')
+            ->once()
+            ->andReturn([
+                [
+                    'name' => 'Salesforce',
+                    'domain' => 'salesforce.com',
+                    'reason' => 'Direct CRM platform overlap.',
+                ],
+                [
+                    'name' => 'Zoho',
+                    'domain' => 'zoho.com',
+                    'reason' => 'CRM and marketing suite overlap.',
+                ],
+                [
+                    'name' => 'Freshworks',
+                    'domain' => 'freshworks.com',
+                    'reason' => 'CRM and service platform overlap.',
+                ],
+                [
+                    'name' => 'ActiveCampaign',
+                    'domain' => 'activecampaign.com',
+                    'reason' => 'Marketing automation and CRM overlap.',
+                ],
+                [
+                    'name' => 'Pipedrive',
+                    'domain' => 'pipedrive.com',
+                    'reason' => 'Sales CRM overlap.',
+                ],
+                [
+                    'name' => 'Zendesk',
+                    'domain' => 'zendesk.com',
+                    'reason' => 'Customer service platform overlap.',
+                ],
+            ]);
+
+        $this->app->instance(
+            GeminiCompetitorDiscoveryService::class,
+            $discovery
+        );
+
+        $competitorSearch = Mockery::mock(
+            CompetitorSearchService::class
+        );
+
+        $competitorSearch->shouldNotReceive(
+            'findCandidates'
+        );
+
+        $competitorEnrichment = Mockery::mock(
+            CompetitorEnrichmentService::class
+        );
+
+        $competitorEnrichment->shouldNotReceive(
+            'enrich'
+        );
+
+        $service = new CompetitorAnalysisService(
+            app(BusinessProfileBuilder::class),
+            app(BusinessClassifier::class),
+            app(SearchProfileBuilder::class),
+            $competitorSearch,
+            app(CompetitorRelevanceScorer::class),
+            $competitorEnrichment
+        );
+
+        $result = $service->analyze([
+            'final_url' => 'https://hubspot.com',
+            'status' => 200,
+            'title' => 'HubSpot Customer Platform',
+            'meta_description'
+                => 'CRM, marketing, sales and service software.',
+            'h1' => [
+                'Customer Platform',
+            ],
+            'h2' => [
+                'CRM',
+                'Marketing',
+                'Sales',
+            ],
+            'text'
+                => 'Global SaaS customer platform for CRM, marketing, sales and service.',
+        ]);
+
+        $this->assertSame(
+            'ai_direct',
+            $result['discovery_source']
+        );
+
+        $this->assertSame(
+            ['ai_direct'],
+            $result['search_stages']
+        );
+
+        $this->assertSame(
+            6,
+            $result['candidate_count']
+        );
+
+        $this->assertCount(
+            5,
+            $result['top_competitors']
+        );
+
+        $this->assertCount(
+            6,
+            $result['digital_candidate_pool']
+        );
+
+        $this->assertSame(
+            'Zendesk',
+            data_get(
+                $result,
+                'digital_candidate_pool.5.displayName.text'
+            )
+        );
+
+        $this->assertSame(
+            'Salesforce',
+            data_get(
+                $result,
+                'top_competitors.0.displayName.text'
+            )
+        );
+
+        $this->assertSame(
+            'https://salesforce.com',
+            data_get(
+                $result,
+                'top_competitors.0.websiteUri'
+            )
+        );
+
+        $this->assertSame(
+            'Direct Product Competitor',
+            data_get(
+                $result,
+                'top_competitors.0.primaryTypeDisplayName.text'
+            )
+        );
+
+        $this->assertSame(
+            'ai_direct',
+            data_get(
+                $result,
+                'top_competitors.0._match.search_modes.0'
+            )
+        );
+
+        $this->assertTrue(
+            (bool) data_get(
+                $result,
+                'top_competitors.0._relevance.strong_match'
+            )
+        );
+
+        $this->assertStringStartsWith(
+            'ai-',
+            data_get(
+                $result,
+                'top_competitors.0.id'
+            )
+        );
+    }
+
+    public function test_failed_digital_discovery_falls_back_to_existing_google_places_pipeline(): void
+    {
+        $businessIntelligence = Mockery::mock(
+            BusinessIntelligenceService::class
+        );
+
+        $businessIntelligence
+            ->shouldReceive('classify')
+            ->once()
+            ->andReturn([
+                'business_model' => 'SaaS company',
+                'business_type' => 'Software Platform',
+                'vertical' => 'technology',
+                'market_scope' => 'broader',
+                'geography_weight' => 'low',
+                'radius_strategy_km' => [300, 1000, 3000],
+                'service_keywords' => ['software'],
+                'search_queries' => ['software platform'],
+                'discovery_mode' => 'digital_global',
+                'confidence' => 'high',
+                '_classification_source' => 'ai',
+            ]);
+
+        $businessIntelligence
+            ->shouldReceive('applySearchIntent')
+            ->once()
+            ->andReturnUsing(
+                static function (
+                    array $searchProfile
+                ): array {
+                    $searchProfile['business_type']
+                        = 'Software Platform';
+                    $searchProfile['vertical']
+                        = 'technology';
+                    $searchProfile['market_scope']
+                        = 'broader';
+                    $searchProfile['geography_weight']
+                        = 'low';
+                    $searchProfile['discovery_mode']
+                        = 'digital_global';
+                    $searchProfile['search_queries']
+                        = ['software platform'];
+
+                    return $searchProfile;
+                }
+            );
+
+        $this->app->instance(
+            BusinessIntelligenceService::class,
+            $businessIntelligence
+        );
+
+        $discovery = Mockery::mock(
+            GeminiCompetitorDiscoveryService::class
+        );
+
+        $discovery
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturnTrue();
+
+        $discovery
+            ->shouldReceive('discover')
+            ->once()
+            ->andThrow(
+                new \RuntimeException(
+                    'temporary provider failure'
+                )
+            );
+
+        $this->app->instance(
+            GeminiCompetitorDiscoveryService::class,
+            $discovery
+        );
+
+        $competitorSearch = Mockery::mock(
+            CompetitorSearchService::class
+        );
+
+        $competitorSearch
+            ->shouldReceive('findCandidates')
+            ->once()
+            ->with(
+                Mockery::type('array'),
+                30,
+                CompetitorSearchService::STAGE_INITIAL
+            )
+            ->andReturn([]);
+
+        $service = $this->service(
+            $competitorSearch
+        );
+
+        $result = $service->analyze([
+            'final_url' => 'https://example.com',
+            'status' => 200,
+            'title' => 'Example Platform',
+            'meta_description'
+                => 'Global software platform.',
+            'h1' => [
+                'Software Platform',
+            ],
+            'h2' => [],
+            'text'
+                => 'Global software platform.',
+        ]);
+
+        $this->assertSame(
+            'google_places_fallback',
+            $result['discovery_source']
+        );
+
+        $this->assertSame(
+            [
+                CompetitorSearchService::STAGE_INITIAL,
+            ],
+            $result['search_stages']
+        );
+
+        $this->assertSame(
+            [],
+            $result['top_competitors']
         );
     }
 

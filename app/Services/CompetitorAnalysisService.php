@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
+use Throwable;
+
 class CompetitorAnalysisService
 {
     private const TARGET_STRONG_MATCHES = 5;
@@ -53,6 +56,27 @@ class CompetitorAnalysisService
             $searchProfile,
             $classification
         );
+
+        $isDigitalGlobal = data_get(
+            $classification,
+            'discovery_mode'
+        ) === 'digital_global';
+
+        if ($isDigitalGlobal) {
+            $digitalCompetitors = $this->discoverDigitalCompetitors(
+                $businessProfile,
+                $classification
+            );
+
+            if ($digitalCompetitors !== null) {
+                return $this->digitalAnalysisResult(
+                    $businessProfile,
+                    $classification,
+                    $searchProfile,
+                    $digitalCompetitors
+                );
+            }
+        }
 
         $candidatePool = [];
         $completedStages = [];
@@ -122,6 +146,219 @@ class CompetitorAnalysisService
             'search_exhausted' =>
                 $strongMatchCount < self::TARGET_STRONG_MATCHES
                 && count($completedStages) === count($plannedStages),
+
+            'discovery_source' =>
+                $isDigitalGlobal
+                    ? 'google_places_fallback'
+                    : 'google_places',
+        ];
+    }
+
+    private function discoverDigitalCompetitors(
+        array $businessProfile,
+        array $classification
+    ): ?array {
+        $discovery = app(
+            GeminiCompetitorDiscoveryService::class
+        );
+
+        if (! $discovery->isConfigured()) {
+            return null;
+        }
+
+        try {
+            return $discovery->discover(
+                $businessProfile,
+                $classification
+            );
+        } catch (Throwable $exception) {
+            /*
+             * Direct AI discovery is an accuracy enhancement, not a hard
+             * dependency. Never log provider payloads, domains, or secrets.
+             */
+            Log::warning(
+                'AI direct competitor discovery failed; using Google Places fallback.',
+                [
+                    'exception'
+                        => get_class(
+                            $exception
+                        ),
+                ]
+            );
+
+            return null;
+        }
+    }
+
+    private function digitalAnalysisResult(
+        array $businessProfile,
+        array $classification,
+        array $searchProfile,
+        array $discoveredCompetitors
+    ): array {
+        $candidatePool = [];
+
+        foreach (
+            array_values($discoveredCompetitors)
+            as $index => $competitor
+        ) {
+            if (! is_array($competitor)) {
+                continue;
+            }
+
+            $candidate = $this->digitalCandidate(
+                $competitor,
+                $index
+            );
+
+            if ($candidate === null) {
+                continue;
+            }
+
+            $candidatePool[] = $candidate;
+        }
+
+        $topCompetitors = array_slice(
+            $candidatePool,
+            0,
+            self::TARGET_STRONG_MATCHES
+        );
+
+        $strongMatchCount = count(
+            $topCompetitors
+        );
+
+        return [
+            'business_profile' => $businessProfile,
+
+            'classification' => $classification,
+
+            'search_profile' => $searchProfile,
+
+            'candidate_count' => count($candidatePool),
+
+            'top_competitors' => $topCompetitors,
+
+            /*
+             * Keep the full AI discovery pool in the session-backed
+             * analysis result. Step 2 shows only the top five, while
+             * manual digital search can reuse the remaining candidates
+             * without spending another Gemini request.
+             */
+            'digital_candidate_pool' => $candidatePool,
+
+            'strong_match_count' => $strongMatchCount,
+
+            'has_competitors' => $topCompetitors !== [],
+
+            'search_stages' => [
+                'ai_direct',
+            ],
+
+            'search_stage_count' => 1,
+
+            'search_exhausted' =>
+                $strongMatchCount < self::TARGET_STRONG_MATCHES,
+
+            'discovery_source' => 'ai_direct',
+        ];
+    }
+
+    private function digitalCandidate(
+        array $competitor,
+        int $index
+    ): ?array {
+        $name = data_get(
+            $competitor,
+            'name'
+        );
+
+        $domain = data_get(
+            $competitor,
+            'domain'
+        );
+
+        $reason = data_get(
+            $competitor,
+            'reason'
+        );
+
+        if (
+            ! is_string($name)
+            || trim($name) === ''
+            || ! is_string($domain)
+            || trim($domain) === ''
+            || ! is_string($reason)
+            || trim($reason) === ''
+        ) {
+            return null;
+        }
+
+        $name = trim($name);
+        $domain = mb_strtolower(
+            trim($domain)
+        );
+        $reason = trim($reason);
+
+        return [
+            'id' =>
+                'ai-'
+                . substr(
+                    hash(
+                        'sha256',
+                        $domain
+                    ),
+                    0,
+                    24
+                ),
+
+            'displayName' => [
+                'text' => $name,
+            ],
+
+            'primaryType'
+                => 'digital_platform',
+
+            'primaryTypeDisplayName' => [
+                'text'
+                    => 'Direct Product Competitor',
+            ],
+
+            'types' => [
+                'digital_platform',
+            ],
+
+            'websiteUri'
+                => 'https://' . $domain,
+
+            '_match' => [
+                'queries' => [],
+                'executed_queries' => [],
+                'query_hits' => 0,
+                'search_modes' => [
+                    'ai_direct',
+                ],
+                'distance_km' => null,
+            ],
+
+            '_relevance' => [
+                'quality' => 'strong',
+                'strong_match' => true,
+                'type_compatible' => true,
+                'evidence' => [
+                    'discovery_source'
+                        => 'ai_direct',
+                    'direct_rank'
+                        => $index + 1,
+                ],
+            ],
+
+            '_discovery' => [
+                'source' => 'ai',
+                'domain' => $domain,
+                'reason' => $reason,
+                'rank' => $index + 1,
+            ],
         ];
     }
 

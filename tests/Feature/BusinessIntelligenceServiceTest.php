@@ -53,6 +53,13 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $this->assertSame(
+            'broader_physical',
+            $classification[
+                'discovery_mode'
+            ]
+        );
+
+        $this->assertSame(
             'low',
             $classification[
                 'geography_weight'
@@ -100,6 +107,13 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $this->assertSame(
+            'broader_physical',
+            $searchProfile[
+                'discovery_mode'
+            ]
+        );
+
+        $this->assertSame(
             'low',
             $searchProfile[
                 'geography_weight'
@@ -124,6 +138,9 @@ class BusinessIntelligenceServiceTest extends TestCase
 
             'market_scope'
                 => 'local',
+
+            'discovery_mode'
+                => 'local_physical',
 
             'products_services' => [
                 'plumbing',
@@ -167,6 +184,13 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $this->assertSame(
+            'local_physical',
+            $classification[
+                'discovery_mode'
+            ]
+        );
+
+        $this->assertSame(
             'high',
             $classification[
                 'geography_weight'
@@ -202,6 +226,9 @@ class BusinessIntelligenceServiceTest extends TestCase
 
             'market_scope'
                 => 'broader',
+
+            'discovery_mode'
+                => 'digital_global',
 
             'products_services' => [
                 'crm',
@@ -254,6 +281,13 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $this->assertSame(
+            'digital_global',
+            $classification[
+                'discovery_mode'
+            ]
+        );
+
+        $this->assertSame(
             'low',
             $classification[
                 'geography_weight'
@@ -265,6 +299,30 @@ class BusinessIntelligenceServiceTest extends TestCase
             $classification[
                 'business_type'
             ]
+        );
+    }
+
+    public function test_broader_market_cannot_remain_local_physical_discovery(): void
+    {
+        $result = $this->industrialDistributorAiResult();
+        $result['discovery_mode'] = 'local_physical';
+
+        $service = $this->serviceWithAiResult(
+            $result
+        );
+
+        $classification = $service->classify(
+            $this->wainbeeLikeProfile()
+        );
+
+        $this->assertSame(
+            'broader',
+            $classification['market_scope']
+        );
+
+        $this->assertSame(
+            'broader_physical',
+            $classification['discovery_mode']
         );
     }
 
@@ -527,6 +585,9 @@ class BusinessIntelligenceServiceTest extends TestCase
 
             'market_scope'
                 => 'broader',
+
+            'discovery_mode'
+                => 'broader_physical',
 
             'products_services' => [
                 'motion control',

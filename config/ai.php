@@ -50,6 +50,21 @@ return [
             8
         ),
 
+        /*
+         * Direct digital competitor discovery can require a little more
+         * generation time than classification. These remain optional env
+         * overrides and do not affect the existing classifier timeout.
+         */
+        'discovery_timeout' => (int) env(
+            'GEMINI_DISCOVERY_TIMEOUT',
+            12
+        ),
+
+        'discovery_max_output_tokens' => (int) env(
+            'GEMINI_DISCOVERY_MAX_OUTPUT_TOKENS',
+            1400
+        ),
+
         'max_output_tokens' => (int) env(
             'GEMINI_MAX_OUTPUT_TOKENS',
             900

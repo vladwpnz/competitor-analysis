@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Services\GeminiCompetitorDiscoveryService;
 use App\Services\GooglePlacesService;
 use Mockery;
 use Tests\TestCase;
@@ -79,6 +80,301 @@ class CompetitorSelectionTest extends TestCase
                 'suggestions.0.name',
                 'Metro Plumbing'
             );
+    }
+
+    public function test_digital_global_manual_search_reuses_cached_ai_candidates_before_live_api(): void
+    {
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'isConfigured'
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'searchBusinesses'
+        );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $digitalDiscovery = Mockery::mock(
+            GeminiCompetitorDiscoveryService::class
+        );
+
+        $digitalDiscovery->shouldNotReceive(
+            'isConfigured'
+        );
+
+        $digitalDiscovery->shouldNotReceive(
+            'search'
+        );
+
+        $this->app->instance(
+            GeminiCompetitorDiscoveryService::class,
+            $digitalDiscovery
+        );
+
+        $salesforce = $this->digitalCompetitor(
+            'salesforce.com',
+            'Salesforce'
+        );
+
+        $pipedrive = $this->digitalCompetitor(
+            'pipedrive.com',
+            'Pipedrive'
+        );
+
+        $session = $this->digitalAnalysisSession([
+            $salesforce,
+        ]);
+
+        $session['analysis.result']['digital_candidate_pool'] = [
+            $salesforce,
+            $pipedrive,
+        ];
+
+        $response = $this
+            ->withSession($session)
+            ->getJson(
+                route(
+                    'competitors.search',
+                    [
+                        'q' => 'Pipedrive',
+                    ]
+                )
+            );
+
+        $expectedId = (string) data_get(
+            $pipedrive,
+            'id'
+        );
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(
+                1,
+                'suggestions'
+            )
+            ->assertJsonPath(
+                'suggestions.0.place_id',
+                $expectedId
+            )
+            ->assertJsonPath(
+                'suggestions.0.name',
+                'Pipedrive'
+            )
+            ->assertJsonPath(
+                'suggestions.0.category',
+                'Direct Product Competitor'
+            );
+
+        $response->assertSessionHas(
+            'analysis.manual_competitor_candidates',
+            function (array $candidates) use ($expectedId): bool {
+                return
+                    isset($candidates[$expectedId])
+                    && data_get(
+                        $candidates[$expectedId],
+                        'websiteUri'
+                    ) === 'https://pipedrive.com'
+                    && data_get(
+                        $candidates[$expectedId],
+                        '_manual_selection'
+                    ) === true;
+            }
+        );
+    }
+
+    public function test_digital_global_manual_search_falls_back_to_live_ai_when_cache_has_no_match(): void
+    {
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'isConfigured'
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'searchBusinesses'
+        );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $digitalDiscovery = Mockery::mock(
+            GeminiCompetitorDiscoveryService::class
+        );
+
+        $digitalDiscovery
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $digitalDiscovery
+            ->shouldReceive('search')
+            ->once()
+            ->with(
+                Mockery::type('array'),
+                Mockery::on(
+                    fn (array $classification): bool =>
+                        data_get(
+                            $classification,
+                            'discovery_mode'
+                        ) === 'digital_global'
+                ),
+                'Copper CRM'
+            )
+            ->andReturn([
+                [
+                    'name' => 'Copper CRM',
+                    'domain' => 'copper.com',
+                    'reason'
+                        => 'Direct CRM platform competitor.',
+                ],
+            ]);
+
+        $this->app->instance(
+            GeminiCompetitorDiscoveryService::class,
+            $digitalDiscovery
+        );
+
+        $salesforce = $this->digitalCompetitor(
+            'salesforce.com',
+            'Salesforce'
+        );
+
+        $session = $this->digitalAnalysisSession([
+            $salesforce,
+        ]);
+
+        $session['analysis.result']['digital_candidate_pool'] = [
+            $salesforce,
+        ];
+
+        $response = $this
+            ->withSession($session)
+            ->getJson(
+                route(
+                    'competitors.search',
+                    [
+                        'q' => 'Copper CRM',
+                    ]
+                )
+            );
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(
+                1,
+                'suggestions'
+            )
+            ->assertJsonPath(
+                'suggestions.0.name',
+                'Copper CRM'
+            );
+    }
+
+    public function test_digital_global_manual_competitor_can_be_added_without_google_place_details(): void
+    {
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'isConfigured'
+        );
+
+        $googlePlaces->shouldNotReceive(
+            'getPlaceDetails'
+        );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $pipedrive = $this->digitalCompetitor(
+            'pipedrive.com',
+            'Pipedrive',
+            true
+        );
+
+        $competitorId = (string) data_get(
+            $pipedrive,
+            'id'
+        );
+
+        $session = $this->digitalAnalysisSession([
+            $this->digitalCompetitor(
+                'salesforce.com',
+                'Salesforce'
+            ),
+        ]);
+
+        $session['analysis.manual_competitor_candidates']
+            = [
+                $competitorId => $pipedrive,
+            ];
+
+        $response = $this
+            ->withSession($session)
+            ->postJson(
+                route('competitors.add'),
+                [
+                    'place_id'
+                        => $competitorId,
+                ]
+            );
+
+        $response
+            ->assertOk()
+            ->assertJsonPath(
+                'competitor.place_id',
+                $competitorId
+            )
+            ->assertJsonPath(
+                'competitor.name',
+                'Pipedrive'
+            )
+            ->assertJsonPath(
+                'competitor.category',
+                'Direct Product Competitor'
+            )
+            ->assertJsonPath(
+                'competitor.show_distance',
+                false
+            )
+            ->assertJsonPath(
+                'count',
+                2
+            );
+
+        $response->assertSessionHas(
+            'analysis.selected_competitors',
+            function (array $competitors) use ($competitorId): bool {
+                return
+                    count($competitors) === 2
+                    && data_get(
+                        $competitors,
+                        '1.id'
+                    ) === $competitorId
+                    && data_get(
+                        $competitors,
+                        '1._manual_selection'
+                    ) === true
+                    && data_get(
+                        $competitors,
+                        '1._discovery.source'
+                    ) === 'ai_manual';
+            }
+        );
     }
 
     public function test_manual_competitor_can_be_added_and_is_saved_in_session(): void
@@ -401,6 +697,128 @@ class CompetitorSelectionTest extends TestCase
 
             'analysis.selected_competitors'
                 => $selectedCompetitors,
+        ];
+    }
+
+    private function digitalAnalysisSession(
+        array $selectedCompetitors
+    ): array {
+        return [
+            'analysis.website'
+                => 'https://www.hubspot.com/',
+
+            'analysis.google_business'
+                => 'HubSpot, Cambridge, MA',
+
+            'analysis.google_place_id'
+                => 'hubspot-place',
+
+            'analysis.google_place' => [
+                'id' => 'hubspot-place',
+                'displayName' => [
+                    'text' => 'HubSpot',
+                ],
+            ],
+
+            'analysis.result' => [
+                'business_profile' => [
+                    'website' => [
+                        'url'
+                            => 'https://www.hubspot.com/',
+                    ],
+                    'classification_input' => [
+                        'business_name'
+                            => 'HubSpot',
+                    ],
+                ],
+
+                'classification' => [
+                    'business_model'
+                        => 'SaaS company',
+                    'business_type'
+                        => 'CRM and Marketing Automation Software Provider',
+                    'vertical'
+                        => 'technology',
+                    'industry'
+                        => 'CRM & Marketing Technology',
+                    'market_scope'
+                        => 'broader',
+                    'discovery_mode'
+                        => 'digital_global',
+                    'service_keywords' => [
+                        'CRM',
+                        'marketing automation',
+                    ],
+                ],
+
+                'search_profile' => [
+                    'market_scope'
+                        => 'broader',
+                ],
+
+                'top_competitors'
+                    => $selectedCompetitors,
+            ],
+
+            'analysis.selected_competitors'
+                => $selectedCompetitors,
+        ];
+    }
+
+    private function digitalCompetitor(
+        string $domain,
+        string $name,
+        bool $manual = false
+    ): array {
+        $id =
+            'ai-'
+            . substr(
+                hash(
+                    'sha256',
+                    $domain
+                ),
+                0,
+                24
+            );
+
+        return [
+            'id' => $id,
+            'displayName' => [
+                'text' => $name,
+            ],
+            'primaryType'
+                => 'digital_platform',
+            'primaryTypeDisplayName' => [
+                'text'
+                    => 'Direct Product Competitor',
+            ],
+            'types' => [
+                'digital_platform',
+            ],
+            'websiteUri'
+                => 'https://' . $domain,
+            '_manual_selection'
+                => $manual,
+            '_match' => [
+                'queries' => [],
+                'executed_queries' => [],
+                'query_hits' => 0,
+                'search_modes' => [
+                    $manual
+                        ? 'ai_direct_manual'
+                        : 'ai_direct',
+                ],
+                'distance_km' => null,
+            ],
+            '_discovery' => [
+                'source'
+                    => $manual
+                        ? 'ai_manual'
+                        : 'ai',
+                'domain' => $domain,
+                'reason'
+                    => 'Direct product competitor.',
+            ],
         ];
     }
 

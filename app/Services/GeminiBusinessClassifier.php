@@ -208,6 +208,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                 'Use only the supplied public website and Google Business Profile context.',
                 'A Google Business category can be broad, incomplete, or misleading, so determine the actual operating business model from all available evidence.',
                 'Explicitly distinguish distributor, manufacturer, systems integrator, SaaS company, local service provider, agency, retailer, wholesaler, marketplace, and other business models.',
+                'Choose discovery_mode by how true competitors should be discovered, not merely by industry: local_physical for geographically local businesses; broader_physical for real-world companies competing across a region or country where business/location directories are still useful; digital_global for digital products, SaaS, cloud/API products, online platforms, marketplaces, or other businesses whose true competitors are brands/products rather than nearby offices; hybrid only when both physical/local and digital/broader competitor discovery are genuinely important.',
                 'Focus on companies that sell a substitutable solution to similar target customers.',
                 'Search queries must be generic category or service phrases suitable for Google Places.',
                 'Never put the subject company name, a competitor company name, a domain, or a URL in search_queries.',
@@ -415,6 +416,18 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                     ],
                 ],
 
+                'discovery_mode' => [
+                    'type' => 'string',
+                    'description'
+                        => 'How competitors should be discovered: local physical businesses, broader physical businesses, global digital/product competitors, or a genuine hybrid of physical and digital discovery.',
+                    'enum' => [
+                        'local_physical',
+                        'broader_physical',
+                        'digital_global',
+                        'hybrid',
+                    ],
+                ],
+
                 'products_services'
                     => $stringArray(
                         'Core products, services, or solution categories that define the business. Exclude incidental catalog items.',
@@ -472,6 +485,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                 'vertical',
                 'industry',
                 'market_scope',
+                'discovery_mode',
                 'products_services',
                 'target_customers',
                 'competitor_types',

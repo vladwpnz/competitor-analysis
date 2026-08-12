@@ -29,6 +29,10 @@
     );
 
     $isBroaderMarket = $marketScope === 'broader';
+    $isDigitalGlobal = data_get(
+        $analysisResult,
+        'classification.discovery_mode'
+    ) === 'digital_global';
     $hasAnalysis = is_array($analysisResult);
     $isPreview = (bool) ($isPreview ?? false);
 @endphp
@@ -651,7 +655,9 @@
         <div class="step2-modal-kicker">CUSTOMIZE YOUR LIST</div>
         <h2 id="add-competitor-title">Add a Competitor</h2>
         <p>
-            Search Google by business name or website, then choose the correct business.
+            {{ $isDigitalGlobal
+                ? 'Search direct product competitors by company name or official domain.'
+                : 'Search Google by business name or website, then choose the correct business.' }}
         </p>
 
         <div class="step2-modal-search">
@@ -682,7 +688,9 @@
             hidden
         ></div>
 
-        <div class="step2-google-attribution">Google Maps</div>
+        <div class="step2-google-attribution">
+            {{ $isDigitalGlobal ? 'AI direct competitor search' : 'Google Maps' }}
+        </div>
     </section>
 </div>
 
@@ -1411,7 +1419,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultsBox.hidden = false;
         setModalStatus(
-            'Select the correct business from Google.'
+            'Select the competitor you want to add.'
         );
     };
 

@@ -28,6 +28,13 @@ class BusinessIntelligenceService
         'other',
     ];
 
+    private const DISCOVERY_MODES = [
+        'local_physical',
+        'broader_physical',
+        'digital_global',
+        'hybrid',
+    ];
+
     private const CONFIDENCE_LEVELS = [
         'high',
         'medium',
@@ -189,6 +196,14 @@ class BusinessIntelligenceService
                 'unknown'
             );
 
+        $searchProfile['discovery_mode']
+            = data_get(
+                $classification,
+                'discovery_mode',
+                $searchProfile['discovery_mode']
+                    ?? null
+            );
+
         return $searchProfile;
     }
 
@@ -239,6 +254,17 @@ class BusinessIntelligenceService
             $businessModel,
             $businessType,
             $businessProfile
+        );
+
+        $discoveryMode = $this->requiredEnum(
+            $classification,
+            'discovery_mode',
+            self::DISCOVERY_MODES
+        );
+
+        $discoveryMode = $this->stabilizeDiscoveryMode(
+            $discoveryMode,
+            $marketScope
         );
 
         $confidence = $this->requiredEnum(
@@ -304,6 +330,8 @@ class BusinessIntelligenceService
             'vertical' => $vertical,
 
             'market_scope' => $marketScope,
+
+            'discovery_mode' => $discoveryMode,
 
             /*
              * Geography remains deterministic. The AI can understand the
@@ -665,6 +693,33 @@ class BusinessIntelligenceService
         }
 
         return $marketScope;
+    }
+
+    private function stabilizeDiscoveryMode(
+        string $discoveryMode,
+        string $marketScope
+    ): string {
+        /*
+         * Discovery mode describes where competitors should be discovered,
+         * while market scope still controls geography. Keep impossible
+         * combinations out of the downstream pipeline without hard-coding
+         * any specific company or industry.
+         */
+        if ($marketScope === 'local') {
+            return $discoveryMode === 'hybrid'
+                ? 'hybrid'
+                : 'local_physical';
+        }
+
+        if ($marketScope === 'broader') {
+            if ($discoveryMode === 'local_physical') {
+                return 'broader_physical';
+            }
+
+            return $discoveryMode;
+        }
+
+        return 'hybrid';
     }
 
     private function geographyWeight(

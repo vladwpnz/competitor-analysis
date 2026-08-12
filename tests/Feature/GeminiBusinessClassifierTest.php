@@ -103,6 +103,11 @@ class GeminiBusinessClassifierTest extends TestCase
             $result['business_type']
         );
 
+        $this->assertSame(
+            'broader_physical',
+            $result['discovery_mode']
+        );
+
         Http::assertSent(
             function (Request $request): bool {
                 $data = $request->data();
@@ -135,6 +140,24 @@ class GeminiBusinessClassifierTest extends TestCase
                         $data,
                         'response_format.schema.properties.search_queries.maxItems'
                     ) === 4
+                    && data_get(
+                        $data,
+                        'response_format.schema.properties.discovery_mode.enum'
+                    ) === [
+                        'local_physical',
+                        'broader_physical',
+                        'digital_global',
+                        'hybrid',
+                    ]
+                    && in_array(
+                        'discovery_mode',
+                        data_get(
+                            $data,
+                            'response_format.schema.required',
+                            []
+                        ),
+                        true
+                    )
                     && str_contains(
                         (string) data_get(
                             $data,
@@ -257,6 +280,9 @@ class GeminiBusinessClassifierTest extends TestCase
 
             'market_scope'
                 => 'broader',
+
+            'discovery_mode'
+                => 'broader_physical',
 
             'products_services' => [
                 'motion control',
