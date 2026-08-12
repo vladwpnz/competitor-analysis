@@ -425,4 +425,80 @@ class CompetitorSearchServiceTest extends TestCase
             $candidates[0]['_match']['executed_queries']
         );
     }
+    public function test_local_search_excludes_other_locations_of_same_brand(): void
+    {
+        $google = Mockery::mock(GooglePlacesService::class);
+
+        $google->shouldReceive('searchBusinessesNear')
+            ->once()
+            ->with(
+                'Dermatology Clinic',
+                30.2870,
+                -97.8130,
+                50,
+                15
+            )
+            ->andReturn([
+                [
+                    'id' => 'own-place',
+                    'displayName' => [
+                        'text' => 'Westlake Dermatology & Cosmetic Surgery',
+                    ],
+                    'location' => [
+                        'latitude' => 30.2870,
+                        'longitude' => -97.8130,
+                    ],
+                ],
+                [
+                    'id' => 'same-brand-branch',
+                    'displayName' => [
+                        'text' => 'Westlake Dermatology & Cosmetic Surgery - Southwest Parkway',
+                    ],
+                    'location' => [
+                        'latitude' => 30.2500,
+                        'longitude' => -97.8500,
+                    ],
+                ],
+                [
+                    'id' => 'real-competitor',
+                    'displayName' => [
+                        'text' => 'Central Texas Dermatology',
+                    ],
+                    'primaryType' => 'skin_care_clinic',
+                    'location' => [
+                        'latitude' => 30.3000,
+                        'longitude' => -97.7900,
+                    ],
+                ],
+            ]);
+
+        $service = new CompetitorSearchService($google);
+
+        $candidates = $service->findCandidates([
+            'search_queries' => [
+                'Dermatology Clinic',
+            ],
+            'market_scope' => 'local',
+            'geography_weight' => 'high',
+            'location' => [
+                'latitude' => 30.2870,
+                'longitude' => -97.8130,
+                'address' => '8825 Bee Caves Rd, Austin, TX, USA',
+            ],
+            'exclude' => [
+                'place_id' => 'own-place',
+                'business_name'
+                    => 'Westlake Dermatology & Cosmetic Surgery',
+                'website_host'
+                    => 'westlakedermatology.com',
+            ],
+        ]);
+
+        $this->assertCount(1, $candidates);
+        $this->assertSame(
+            'real-competitor',
+            $candidates[0]['id']
+        );
+    }
+
 }

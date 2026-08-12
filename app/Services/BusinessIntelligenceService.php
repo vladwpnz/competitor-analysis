@@ -144,6 +144,18 @@ class BusinessIntelligenceService
             true
         );
 
+        if (
+            data_get(
+                $classification,
+                'vertical'
+            ) === 'healthcare_local'
+        ) {
+            $queries = $this->prioritizeLocalHealthcareQueries(
+                $businessType,
+                $queries
+            );
+        }
+
         if ($businessType !== null) {
             $searchProfile['business_type']
                 = $businessType;
@@ -702,7 +714,132 @@ class BusinessIntelligenceService
             }
         }
 
+        /*
+         * A physical office GBP can make global payment infrastructure look
+         * local/hybrid. Stabilize clear digital-finance signals only; local
+         * advisors, branches and brokers remain location-sensitive.
+         */
+        if ($vertical === 'financial_services') {
+            $financeText = mb_strtolower(
+                implode(' ', array_filter([
+                    $businessModel,
+                    $businessType,
+                    data_get(
+                        $businessProfile,
+                        'classification_input.website_title'
+                    ),
+                    data_get(
+                        $businessProfile,
+                        'classification_input.website_description'
+                    ),
+                ], static fn (mixed $value): bool =>
+                    is_string($value) && trim($value) !== ''
+                ))
+            );
+
+            foreach ([
+                'payment processor',
+                'payment processing',
+                'payment platform',
+                'payments platform',
+                'payment infrastructure',
+                'payments infrastructure',
+                'financial infrastructure',
+                'fintech platform',
+                'online payments',
+                'payment gateway',
+                'payments api',
+                'payment api',
+                'merchant payments',
+                'commerce infrastructure',
+            ] as $signal) {
+                if (str_contains($financeText, $signal)) {
+                    return 'broader';
+                }
+            }
+        }
+
         return $marketScope;
+    }
+
+    private function prioritizeLocalHealthcareQueries(
+        ?string $businessType,
+        array $queries
+    ): array {
+        if ($businessType === null) {
+            return $queries;
+        }
+
+        $normalizedType = mb_strtolower(
+            trim($businessType)
+        );
+
+        $genericTypes = [
+            'clinic',
+            'medical clinic',
+            'medical center',
+            'doctor',
+            'physician',
+            'health clinic',
+            'healthcare provider',
+            'primary care clinic',
+            'family practice',
+        ];
+
+        $isSpecialized = ! in_array(
+            $normalizedType,
+            $genericTypes,
+            true
+        );
+
+        if (! $isSpecialized) {
+            return $queries;
+        }
+
+        $genericQueries = [
+            'clinic',
+            'medical clinic',
+            'medical center',
+            'doctor',
+            'physician',
+            'health clinic',
+            'healthcare provider',
+            'primary care clinic',
+            'family practice',
+            'family doctor',
+        ];
+
+        $focused = [
+            $businessType,
+        ];
+
+        foreach ($queries as $query) {
+            $normalized = mb_strtolower(
+                trim($query)
+            );
+
+            if (
+                in_array(
+                    $normalized,
+                    $genericQueries,
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            $focused[] = $query;
+        }
+
+        return array_slice(
+            array_values(
+                array_unique(
+                    $focused
+                )
+            ),
+            0,
+            4
+        );
     }
 
     private function stabilizeDiscoveryMode(

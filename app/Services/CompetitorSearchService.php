@@ -695,24 +695,139 @@ class CompetitorSearchService
             return true;
         }
 
-        $excludedName = $this->normalizeName(
+        $excludedWebsiteHost = $this->normalizeHost(
             data_get(
                 $searchProfile,
-                'exclude.business_name'
+                'exclude.website_host'
             )
+        );
+
+        $candidateWebsiteHost = $this->normalizeHost(
+            data_get(
+                $place,
+                'websiteUri'
+            )
+        );
+
+        if (
+            $excludedWebsiteHost !== null
+            && $candidateWebsiteHost !== null
+            && $excludedWebsiteHost === $candidateWebsiteHost
+        ) {
+            return true;
+        }
+
+        $excludedRawName = data_get(
+            $searchProfile,
+            'exclude.business_name'
+        );
+
+        $candidateRawName = data_get(
+            $place,
+            'displayName.text'
+        );
+
+        $excludedName = $this->normalizeName(
+            $excludedRawName
         );
 
         $candidateName = $this->normalizeName(
-            data_get(
-                $place,
-                'displayName.text'
-            )
+            $candidateRawName
+        );
+
+        if (
+            $excludedName !== null
+            && $candidateName !== null
+            && $excludedName === $candidateName
+        ) {
+            return true;
+        }
+
+        /*
+         * Google Places commonly returns another branch of the same brand
+         * under a name such as "Brand Name - Downtown". A different Place ID
+         * does not make that branch a competitor, so compare the stable brand
+         * portion of both names before accepting the candidate.
+         */
+        $excludedBrand = $this->brandNameCore(
+            $excludedRawName
+        );
+
+        $candidateBrand = $this->brandNameCore(
+            $candidateRawName
         );
 
         return
-            $excludedName !== null
-            && $candidateName !== null
-            && $excludedName === $candidateName;
+            $excludedBrand !== null
+            && $candidateBrand !== null
+            && $excludedBrand === $candidateBrand;
+    }
+
+    private function brandNameCore(
+        mixed $value
+    ): ?string {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        $parts = preg_split(
+            '/\s+(?:[-–—|@])\s+|\s+\bat\b\s+/iu',
+            $value,
+            2
+        );
+
+        if (is_array($parts) && $parts !== []) {
+            $value = $parts[0];
+        }
+
+        return $this->normalizeName(
+            $value
+        );
+    }
+
+    private function normalizeHost(
+        mixed $value
+    ): ?string {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $value = trim($value);
+
+        if ($value === '') {
+            return null;
+        }
+
+        if (! str_contains($value, '://')) {
+            $value = 'https://' . $value;
+        }
+
+        $host = parse_url(
+            $value,
+            PHP_URL_HOST
+        );
+
+        if (! is_string($host) || trim($host) === '') {
+            return null;
+        }
+
+        $host = mb_strtolower(
+            trim($host)
+        );
+
+        if (str_starts_with($host, 'www.')) {
+            $host = substr($host, 4);
+        }
+
+        return $host === ''
+            ? null
+            : $host;
     }
 
     private function candidateKey(

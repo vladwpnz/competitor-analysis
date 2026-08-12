@@ -145,12 +145,19 @@ class CompetitorRelevanceScorer
             $searchProfile
         );
 
+        $healthcareSpecialtyRatio =
+            $this->healthcareSpecialtyEvidence(
+                $candidate,
+                $searchProfile
+            );
+
         $typeRatio = max(
             $this->typeSimilarity(
                 $candidate,
                 $searchProfile
             ),
-            $roleRatio
+            $roleRatio,
+            $healthcareSpecialtyRatio
         );
 
         $queryRatio = $this->queryEvidence(
@@ -158,9 +165,12 @@ class CompetitorRelevanceScorer
             $searchProfile
         );
 
-        $serviceRatio = $this->serviceEvidence(
-            $candidate,
-            $searchProfile
+        $serviceRatio = max(
+            $this->serviceEvidence(
+                $candidate,
+                $searchProfile
+            ),
+            $healthcareSpecialtyRatio * 0.8
         );
 
         $technologyIntentRatio =
@@ -337,8 +347,221 @@ class CompetitorRelevanceScorer
                         $roleRatio,
                         3
                     ),
+
+                'healthcare_specialty_ratio' =>
+                    round(
+                        $healthcareSpecialtyRatio,
+                        3
+                    ),
             ],
         ];
+    }
+
+    private function healthcareSpecialtyEvidence(
+        array $candidate,
+        array $searchProfile
+    ): float {
+        if (
+            data_get($searchProfile, 'vertical') !== 'healthcare_local'
+            || data_get($searchProfile, 'market_scope') !== 'local'
+        ) {
+            return 0.0;
+        }
+
+        $primaryTokens = $this->specialtyTokens([
+            data_get($searchProfile, 'business_type'),
+        ]);
+
+        $secondarySources = [
+            data_get($searchProfile, 'industry'),
+        ];
+
+        foreach ([
+            'services',
+            'search_queries',
+        ] as $field) {
+            $values = data_get(
+                $searchProfile,
+                $field,
+                []
+            );
+
+            if (is_array($values)) {
+                $secondarySources = array_merge(
+                    $secondarySources,
+                    $values
+                );
+            }
+        }
+
+        $secondaryTokens = $this->specialtyTokens(
+            $secondarySources
+        );
+
+        if ($primaryTokens === [] && $secondaryTokens === []) {
+            return 0.0;
+        }
+
+        $candidateText = [
+            data_get($candidate, 'displayName.text'),
+            data_get($candidate, 'primaryType'),
+            data_get($candidate, 'primaryTypeDisplayName.text'),
+        ];
+
+        $types = data_get(
+            $candidate,
+            'types',
+            []
+        );
+
+        if (is_array($types)) {
+            $candidateText = array_merge(
+                $candidateText,
+                $types
+            );
+        }
+
+        $candidateTokens = $this->specialtyTokens(
+            $candidateText,
+            false
+        );
+
+        if ($candidateTokens === []) {
+            return 0.0;
+        }
+
+        $primaryMatches = [];
+
+        foreach ($primaryTokens as $index => $targetToken) {
+            if ($this->matchesAnySpecialtyToken(
+                $targetToken,
+                $candidateTokens
+            )) {
+                $primaryMatches[] = $index;
+            }
+        }
+
+        if ($primaryMatches !== []) {
+            if (
+                in_array(0, $primaryMatches, true)
+                || count($primaryMatches) >= 2
+            ) {
+                return 1.0;
+            }
+
+            return 0.85;
+        }
+
+        foreach ($secondaryTokens as $targetToken) {
+            if ($this->matchesAnySpecialtyToken(
+                $targetToken,
+                $candidateTokens
+            )) {
+                return 0.7;
+            }
+        }
+
+        return 0.0;
+    }
+
+    private function specialtyTokens(
+        array $values,
+        bool $removeGeneric = true
+    ): array {
+        $tokens = [];
+
+        $generic = [
+            'and',
+            'the',
+            'local',
+            'near',
+            'me',
+            'health',
+            'healthcare',
+            'medical',
+            'clinic',
+            'clinics',
+            'doctor',
+            'doctors',
+            'physician',
+            'physicians',
+            'care',
+            'service',
+            'services',
+            'provider',
+            'providers',
+            'center',
+            'centre',
+            'group',
+            'company',
+            'practice',
+            'practices',
+            'specialist',
+            'specialists',
+            'surgery',
+            'surgical',
+            'hospital',
+            'office',
+            'offices',
+        ];
+
+        foreach ($values as $value) {
+            $normalized = $this->normalizePhrase(
+                $value
+            );
+
+            if ($normalized === null) {
+                continue;
+            }
+
+            foreach ($this->tokens($normalized) as $token) {
+                if (
+                    $removeGeneric
+                    && in_array($token, $generic, true)
+                ) {
+                    continue;
+                }
+
+                $tokens[$token] = true;
+            }
+        }
+
+        return array_keys($tokens);
+    }
+
+    private function matchesAnySpecialtyToken(
+        string $target,
+        array $candidateTokens
+    ): bool {
+        foreach ($candidateTokens as $candidateToken) {
+            if ($this->specialtyTokenMatches(
+                $target,
+                $candidateToken
+            )) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function specialtyTokenMatches(
+        string $left,
+        string $right
+    ): bool {
+        if ($left === $right) {
+            return true;
+        }
+
+        if (
+            mb_strlen($left) < 6
+            || mb_strlen($right) < 6
+        ) {
+            return false;
+        }
+
+        return mb_substr($left, 0, 4)
+            === mb_substr($right, 0, 4);
     }
 
     private function targetsDistributorModel(

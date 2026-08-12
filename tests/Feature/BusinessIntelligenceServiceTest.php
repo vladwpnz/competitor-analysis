@@ -418,6 +418,114 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
     }
 
+    public function test_global_payment_platform_is_stabilized_to_semantic_discovery(): void
+    {
+        $service = $this->serviceWithAiResult([
+            'business_model' => 'payments infrastructure platform',
+            'business_type' => 'Online Payment Processor',
+            'vertical' => 'financial_services',
+            'industry' => 'Online payments and financial infrastructure',
+            'market_scope' => 'hybrid',
+            'discovery_mode' => 'hybrid',
+            'products_services' => [
+                'payment processing',
+                'payments api',
+            ],
+            'target_customers' => [
+                'online businesses',
+            ],
+            'competitor_types' => [
+                'payment processor',
+                'payments platform',
+            ],
+            'search_queries' => [
+                'Payment Processor',
+                'Payments Platform',
+            ],
+            'geography_weight' => 'medium',
+            'confidence' => 'high',
+        ]);
+
+        $classification = $service->classify([
+            'website' => [
+                'url' => 'https://example-payments.test',
+            ],
+            'classification_input' => [
+                'business_name' => 'Example Payments',
+                'website_title' => 'Payments infrastructure for the internet',
+                'website_description' => 'Online payment processing and financial infrastructure for businesses.',
+                'homepage_text' => 'APIs for payments.',
+            ],
+        ]);
+
+        $this->assertSame(
+            'broader',
+            $classification['market_scope']
+        );
+
+        $this->assertSame(
+            'digital_global',
+            $classification['discovery_mode']
+        );
+    }
+
+    public function test_specialized_local_healthcare_search_drops_generic_queries(): void
+    {
+        $service = $this->serviceWithAiResult([
+            'business_model' => 'local dermatology practice',
+            'business_type' => 'Dermatology Clinic',
+            'vertical' => 'healthcare_local',
+            'industry' => 'Dermatology',
+            'market_scope' => 'local',
+            'discovery_mode' => 'local_physical',
+            'products_services' => [
+                'dermatology',
+                'cosmetic dermatology',
+            ],
+            'target_customers' => [
+                'local patients',
+            ],
+            'competitor_types' => [
+                'dermatology clinic',
+                'dermatologist',
+            ],
+            'search_queries' => [
+                'Medical Clinic',
+                'Doctor',
+                'Dermatologist',
+                'Cosmetic Dermatology',
+            ],
+            'geography_weight' => 'high',
+            'confidence' => 'high',
+        ]);
+
+        $classification = $service->classify([
+            'website' => [
+                'url' => 'https://example-dermatology.test',
+            ],
+            'classification_input' => [
+                'business_name' => 'Example Dermatology',
+                'website_title' => 'Dermatology Clinic',
+                'website_description' => 'Dermatology and cosmetic skin care.',
+                'homepage_text' => 'Local dermatology appointments.',
+            ],
+        ]);
+
+        $searchProfile = $service->applySearchIntent(
+            $this->baseSearchProfile(),
+            $classification
+        );
+
+        $this->assertSame(
+            [
+                'Dermatology Clinic',
+                'Dermatologist',
+                'Cosmetic Dermatology',
+            ],
+            $searchProfile['search_queries']
+        );
+    }
+
     public function test_broader_market_cannot_remain_local_physical_discovery(): void
     {
         $result = $this->industrialDistributorAiResult();

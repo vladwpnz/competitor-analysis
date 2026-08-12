@@ -326,4 +326,117 @@ class CompetitorRelevanceScorerTest extends TestCase
             $ranked[0]['_relevance']['score']
         );
     }
+    public function test_specialized_local_healthcare_uses_name_evidence_when_google_type_is_generic(): void
+    {
+        $scorer = app(
+            CompetitorRelevanceScorer::class
+        );
+
+        $searchProfile = [
+            'business_type'
+                => 'Dermatology & Plastic Surgery Clinic',
+            'services' => [
+                'general medical dermatology',
+                'mohs micrographic surgery',
+                'cosmetic plastic surgery',
+            ],
+            'search_queries' => [
+                'Dermatology & Plastic Surgery Clinic',
+                'dermatologist near me',
+                'plastic surgeon near me',
+                'medical spa near me',
+            ],
+            'vertical' => 'healthcare_local',
+            'industry'
+                => 'Dermatology, Plastic Surgery, and Medical Spa Services',
+            'market_scope' => 'local',
+        ];
+
+        $dermatology = [
+            'id' => 'dermatology',
+            'displayName' => [
+                'text' => 'Central Texas Dermatology',
+            ],
+            'primaryType' => 'doctor',
+            'primaryTypeDisplayName' => [
+                'text' => 'Doctor',
+            ],
+            'types' => [
+                'doctor',
+                'health',
+            ],
+            '_match' => [
+                'query_hits' => 3,
+                'queries' => [
+                    'Dermatology & Plastic Surgery Clinic',
+                    'dermatologist near me',
+                    'plastic surgeon near me',
+                ],
+                'distance_km' => 6.34,
+            ],
+        ];
+
+        $pediatrics = [
+            'id' => 'pediatrics',
+            'displayName' => [
+                'text' => 'Austin Pediatrics',
+            ],
+            'primaryType' => 'doctor',
+            'primaryTypeDisplayName' => [
+                'text' => 'Doctor',
+            ],
+            'types' => [
+                'doctor',
+                'health',
+            ],
+            '_match' => [
+                'query_hits' => 3,
+                'queries' => [
+                    'Dermatology & Plastic Surgery Clinic',
+                    'dermatologist near me',
+                    'plastic surgeon near me',
+                ],
+                'distance_km' => 2.0,
+            ],
+        ];
+
+        $ranked = $scorer->rank(
+            [
+                $pediatrics,
+                $dermatology,
+            ],
+            $searchProfile,
+            2
+        );
+
+        $this->assertSame(
+            'dermatology',
+            $ranked[0]['id']
+        );
+
+        $this->assertTrue(
+            $ranked[0]['_relevance']['type_compatible']
+        );
+
+        $this->assertTrue(
+            $ranked[0]['_relevance']['strong_match']
+        );
+
+        $this->assertSame(
+            1.0,
+            $ranked[0]['_relevance']['evidence'][
+                'healthcare_specialty_ratio'
+            ]
+        );
+
+        $this->assertFalse(
+            $ranked[1]['_relevance']['type_compatible']
+        );
+
+        $this->assertGreaterThan(
+            $ranked[1]['_relevance']['score'],
+            $ranked[0]['_relevance']['score']
+        );
+    }
+
 }
