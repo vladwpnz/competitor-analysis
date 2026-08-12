@@ -102,8 +102,14 @@ class CompetitorAnalysisService
 
             $completedStages[] = $stage;
 
-            $topCompetitors = $this->relevanceScorer->rank(
+            $rankedCandidates = $this->relevanceScorer->rank(
                 array_values($candidatePool),
+                $searchProfile,
+                self::CANDIDATES_PER_STAGE
+            );
+
+            $topCompetitors = $this->distinctCompanies(
+                $rankedCandidates,
                 $searchProfile,
                 self::TARGET_STRONG_MATCHES
             );
@@ -650,6 +656,314 @@ class CompetitorAnalysisService
         return $value === ''
             ? null
             : $value;
+    }
+
+    private function distinctCompanies(
+        array $rankedCandidates,
+        array $searchProfile,
+        int $limit
+    ): array {
+        $distinct = [];
+        $seenCompanies = [];
+
+        foreach ($rankedCandidates as $candidate) {
+            if (! is_array($candidate)) {
+                continue;
+            }
+
+            $companyKey = $this->companyIdentityKey(
+                $candidate,
+                $searchProfile
+            );
+
+            if (
+                $companyKey !== null
+                && isset(
+                    $seenCompanies[
+                        $companyKey
+                    ]
+                )
+            ) {
+                continue;
+            }
+
+            if ($companyKey !== null) {
+                $seenCompanies[$companyKey]
+                    = true;
+            }
+
+            $distinct[] = $candidate;
+
+            if (count($distinct) >= $limit) {
+                break;
+            }
+        }
+
+        return $distinct;
+    }
+
+    private function companyIdentityKey(
+        array $candidate,
+        array $searchProfile
+    ): ?string {
+        /*
+         * Website host is the strongest company-level identifier when
+         * Google includes it in the search response.
+         */
+        $website = data_get(
+            $candidate,
+            'websiteUri'
+        );
+
+        if (
+            is_string($website)
+            && trim($website) !== ''
+        ) {
+            $website = trim($website);
+
+            if (! str_contains(
+                $website,
+                '://'
+            )) {
+                $website =
+                    'https://' . $website;
+            }
+
+            $host = parse_url(
+                $website,
+                PHP_URL_HOST
+            );
+
+            if (
+                is_string($host)
+                && trim($host) !== ''
+            ) {
+                $host = mb_strtolower(
+                    trim($host)
+                );
+
+                if (str_starts_with(
+                    $host,
+                    'www.'
+                )) {
+                    $host = substr(
+                        $host,
+                        4
+                    );
+                }
+
+                if ($host !== '') {
+                    return 'host:' . $host;
+                }
+            }
+        }
+
+        $name = $this->normalizeText(
+            data_get(
+                $candidate,
+                'displayName.text'
+            )
+        );
+
+        if ($name === null) {
+            return null;
+        }
+
+        $noiseTokens = [
+            'the' => true,
+            'of' => true,
+            'at' => true,
+            'and' => true,
+            'inc' => true,
+            'incorporated' => true,
+            'llc' => true,
+            'ltd' => true,
+            'limited' => true,
+            'corp' => true,
+            'corporation' => true,
+            'company' => true,
+            'co' => true,
+            'plc' => true,
+            'pllc' => true,
+            'pc' => true,
+            'service' => true,
+            'services' => true,
+            'department' => true,
+        ];
+
+        /*
+         * Remove industry words that every result naturally shares.
+         * For a plumber, "plumbing" should not become part of the brand
+         * identity. For a dermatology search, the same applies to
+         * "dermatology", etc.
+         */
+        $intentValues = [
+            data_get(
+                $searchProfile,
+                'business_type'
+            ),
+        ];
+
+        $services = data_get(
+            $searchProfile,
+            'services',
+            []
+        );
+
+        if (is_array($services)) {
+            foreach ($services as $service) {
+                $intentValues[] = $service;
+            }
+        }
+
+        foreach ($intentValues as $value) {
+            $normalized = $this->normalizeText(
+                $value
+            );
+
+            if ($normalized === null) {
+                continue;
+            }
+
+            foreach (
+                preg_split(
+                    '/\s+/u',
+                    $normalized,
+                    -1,
+                    PREG_SPLIT_NO_EMPTY
+                ) ?: []
+                as $token
+            ) {
+                $noiseTokens[$token] = true;
+            }
+        }
+
+        /*
+         * Google branch names frequently append the city/state:
+         * "Brand Plumbing Austin TX".
+         *
+         * The first comma-separated address part is the street address;
+         * everything after it is locality/region/country context.
+         */
+        $address = data_get(
+            $searchProfile,
+            'location.address'
+        );
+
+        if (
+            is_string($address)
+            && str_contains(
+                $address,
+                ','
+            )
+        ) {
+            $addressParts = array_map(
+                'trim',
+                explode(
+                    ',',
+                    $address
+                )
+            );
+
+            array_shift($addressParts);
+
+            foreach ($addressParts as $part) {
+                $normalized = $this->normalizeText(
+                    $part
+                );
+
+                if ($normalized === null) {
+                    continue;
+                }
+
+                foreach (
+                    preg_split(
+                        '/\s+/u',
+                        $normalized,
+                        -1,
+                        PREG_SPLIT_NO_EMPTY
+                    ) ?: []
+                    as $token
+                ) {
+                    if (
+                        preg_match(
+                            '/^\d+$/u',
+                            $token
+                        ) === 1
+                    ) {
+                        continue;
+                    }
+
+                    $noiseTokens[$token] = true;
+                }
+            }
+        }
+
+        $tokens = preg_split(
+            '/\s+/u',
+            $name,
+            -1,
+            PREG_SPLIT_NO_EMPTY
+        ) ?: [];
+
+        $brandTokens = [];
+
+        foreach ($tokens as $token) {
+            if (isset($noiseTokens[$token])) {
+                continue;
+            }
+
+            /*
+             * Ignore postal-code fragments containing digits.
+             */
+            if (
+                preg_match(
+                    '/\d/u',
+                    $token
+                ) === 1
+            ) {
+                continue;
+            }
+
+            $brandTokens[] = $token;
+        }
+
+        /*
+         * Concatenating intentionally makes:
+         *
+         * Rooterman
+         * Rooter-Man
+         *
+         * resolve to the same stable brand core.
+         */
+        $brandCore = implode(
+            '',
+            $brandTokens
+        );
+
+        $brandCore = preg_replace(
+            '/[^\p{L}\p{N}]+/u',
+            '',
+            $brandCore
+        ) ?? $brandCore;
+
+        /*
+         * A very short core such as "ABC" is not safe enough for fuzzy
+         * company deduplication. Fall back to the full normalized name.
+         */
+        if (mb_strlen($brandCore) < 5) {
+            $brandCore = preg_replace(
+                '/\s+/u',
+                '',
+                $name
+            ) ?? $name;
+        }
+
+        if ($brandCore === '') {
+            return null;
+        }
+
+        return 'brand:' . $brandCore;
     }
 
     private function countStrongMatches(

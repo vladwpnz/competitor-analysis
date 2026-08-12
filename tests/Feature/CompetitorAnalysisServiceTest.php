@@ -146,6 +146,132 @@ class CompetitorAnalysisServiceTest extends TestCase
         }
     }
 
+    public function test_local_analysis_keeps_only_one_result_per_competitor_company(): void
+    {
+        $competitorSearch = Mockery::mock(
+            CompetitorSearchService::class
+        );
+
+        $competitorSearch
+            ->shouldReceive('findCandidates')
+            ->once()
+            ->with(
+                Mockery::on(
+                    static fn (array $searchProfile): bool =>
+                        $searchProfile['market_scope']
+                            === 'local'
+                        && $searchProfile[
+                            'business_type'
+                        ] === 'Plumber'
+                ),
+                30,
+                CompetitorSearchService::STAGE_INITIAL
+            )
+            ->andReturn([
+                $this->strongCandidate(
+                    'rooterman-one',
+                    'Rooterman Plumbing of Austin',
+                    2.0,
+                    'local_50km'
+                ),
+
+                $this->strongCandidate(
+                    'rooterman-two',
+                    'Rooter-Man Plumbing Austin TX',
+                    3.0,
+                    'local_50km'
+                ),
+
+                $this->strongCandidate(
+                    'garrett',
+                    'Garrett Plumbing',
+                    4.0,
+                    'local_50km'
+                ),
+
+                $this->strongCandidate(
+                    'ez-flow',
+                    'EZ Flow Plumbing',
+                    5.0,
+                    'local_50km'
+                ),
+
+                $this->strongCandidate(
+                    'crow',
+                    'Crow Plumbing Service',
+                    6.0,
+                    'local_50km'
+                ),
+
+                $this->strongCandidate(
+                    'o-and-m',
+                    'O M Plumbing',
+                    7.0,
+                    'local_50km'
+                ),
+            ]);
+
+        $service = $this->service(
+            $competitorSearch
+        );
+
+        $googlePlace =
+            $this->plumberGooglePlace();
+
+        $googlePlace['formattedAddress']
+            = '12205 Antoinette Pl, Austin, TX 78727, USA';
+
+        $googlePlace['location'] = [
+            'latitude' => 30.414,
+            'longitude' => -97.694,
+        ];
+
+        $result = $service->analyze(
+            $this->plumberWebsiteScan(),
+            $googlePlace
+        );
+
+        $ids = array_column(
+            $result['top_competitors'],
+            'id'
+        );
+
+        $rooterManIds = array_intersect(
+            $ids,
+            [
+                'rooterman-one',
+                'rooterman-two',
+            ]
+        );
+
+        $this->assertCount(
+            1,
+            $rooterManIds
+        );
+
+        $this->assertCount(
+            5,
+            $result['top_competitors']
+        );
+
+        $this->assertContains(
+            'o-and-m',
+            $ids
+        );
+
+        $this->assertSame(
+            5,
+            $result['strong_match_count']
+        );
+
+        $this->assertSame(
+            [
+                CompetitorSearchService::STAGE_INITIAL,
+            ],
+            $result['search_stages']
+        );
+    }
+
     public function test_local_analysis_expands_until_five_strong_matches_are_available(): void
     {
         $competitorSearch = Mockery::mock(
