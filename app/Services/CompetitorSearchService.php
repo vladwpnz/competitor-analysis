@@ -97,6 +97,14 @@ class CompetitorSearchService
                 }
 
                 if (
+                    $this->isUnavailableBusiness(
+                        $place
+                    )
+                ) {
+                    continue;
+                }
+
+                if (
                     $this->isExcludedBusiness(
                         $place,
                         $searchProfile
@@ -668,6 +676,32 @@ class CompetitorSearchService
 
         return array_values(
             $prepared
+        );
+    }
+
+    private function isUnavailableBusiness(
+        array $place
+    ): bool {
+        $status = data_get(
+            $place,
+            'businessStatus'
+        );
+
+        if (! is_string($status)) {
+            return false;
+        }
+
+        $status = mb_strtoupper(
+            trim($status)
+        );
+
+        return in_array(
+            $status,
+            [
+                'CLOSED_TEMPORARILY',
+                'CLOSED_PERMANENTLY',
+            ],
+            true
         );
     }
 

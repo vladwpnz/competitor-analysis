@@ -119,6 +119,42 @@ class BusinessIntelligenceServiceTest extends TestCase
                 'geography_weight'
             ]
         );
+
+        $this->assertSame(
+            $classification[
+                'business_model'
+            ],
+            $searchProfile[
+                'business_model'
+            ]
+        );
+
+        $this->assertSame(
+            $classification[
+                'industry'
+            ],
+            $searchProfile[
+                'industry'
+            ]
+        );
+
+        $this->assertSame(
+            $classification[
+                'target_customers'
+            ],
+            $searchProfile[
+                'target_customers'
+            ]
+        );
+
+        $this->assertSame(
+            $classification[
+                'competitor_types'
+            ],
+            $searchProfile[
+                'competitor_types'
+            ]
+        );
     }
 
     public function test_ai_keeps_local_plumber_local_and_distance_weighted(): void

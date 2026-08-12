@@ -96,6 +96,84 @@ class CompetitorSearchServiceTest extends TestCase
         $this->assertIsFloat($candidates[0]['_match']['distance_km']);
     }
 
+    public function test_closed_google_businesses_are_not_returned_as_competitors(): void
+    {
+        $google = Mockery::mock(GooglePlacesService::class);
+
+        $google->shouldReceive('searchBusinesses')
+            ->once()
+            ->with('Plumber', 15)
+            ->andReturn([
+                [
+                    'id' => 'operational',
+                    'displayName' => [
+                        'text' => 'Active Plumbing',
+                    ],
+                    'primaryType' => 'plumber',
+                    'businessStatus' => 'OPERATIONAL',
+                ],
+                [
+                    'id' => 'temporarily-closed',
+                    'displayName' => [
+                        'text' => 'Temporary Plumbing',
+                    ],
+                    'primaryType' => 'plumber',
+                    'businessStatus' => 'CLOSED_TEMPORARILY',
+                ],
+                [
+                    'id' => 'permanently-closed',
+                    'displayName' => [
+                        'text' => 'Old Plumbing',
+                    ],
+                    'primaryType' => 'plumber',
+                    'businessStatus' => 'CLOSED_PERMANENTLY',
+                ],
+                [
+                    'id' => 'status-unavailable',
+                    'displayName' => [
+                        'text' => 'Unknown Status Plumbing',
+                    ],
+                    'primaryType' => 'plumber',
+                ],
+            ]);
+
+        $service = new CompetitorSearchService(
+            $google
+        );
+
+        $candidates = $service->findCandidates([
+            'search_queries' => [
+                'Plumber',
+            ],
+            'market_scope' => 'broader',
+            'geography_weight' => 'low',
+            'location' => [
+                'latitude' => null,
+                'longitude' => null,
+            ],
+            'exclude' => [
+                'place_id' => null,
+                'business_name' => null,
+            ],
+        ]);
+
+        $this->assertCount(
+            2,
+            $candidates
+        );
+
+        $this->assertSame(
+            [
+                'operational',
+                'status-unavailable',
+            ],
+            array_column(
+                $candidates,
+                'id'
+            )
+        );
+    }
+
     public function test_broader_business_uses_business_country_context(): void
     {
         $google = Mockery::mock(GooglePlacesService::class);

@@ -412,6 +412,147 @@ class AnalysisFlowTest extends TestCase
         ]);
     }
 
+    public function test_address_only_google_place_is_rejected_before_analysis(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $websiteScan = [
+            'final_url'
+                => 'https://exampleplumbing.com',
+
+            'status' => 200,
+
+            'title'
+                => 'Example Plumbing',
+
+            'meta_description'
+                => 'Local plumbing services.',
+
+            'h1' => [],
+
+            'h2' => [],
+
+            'text'
+                => 'Local plumbing services.',
+        ];
+
+        $googlePlace = [
+            'id'
+                => 'address-only',
+
+            'displayName' => [
+                'text'
+                    => '6263 McNeil Dr',
+            ],
+
+            'formattedAddress'
+                => '6263 McNeil Dr, Austin, TX, USA',
+
+            'primaryType'
+                => 'street_address',
+
+            'types' => [
+                'street_address',
+            ],
+
+            'location' => [
+                'latitude'
+                    => 30.0,
+
+                'longitude'
+                    => -97.0,
+            ],
+
+            'pureServiceAreaBusiness'
+                => false,
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with(
+                'https://exampleplumbing.com'
+            )
+            ->andReturn(
+                $websiteScan
+            );
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('getPlaceDetails')
+            ->once()
+            ->with(
+                'address-only',
+                $sessionToken,
+                true
+            )
+            ->andReturn(
+                $googlePlace
+            );
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis
+            ->shouldNotReceive('analyze');
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this
+            ->from(route('home'))
+            ->post(
+                route('analysis.start'),
+                [
+                    'website'
+                        => 'https://exampleplumbing.com',
+
+                    'google_business'
+                        => '6263 McNeil Dr',
+
+                    'google_place_id'
+                        => 'address-only',
+
+                    'google_places_session_token'
+                        => $sessionToken,
+                ]
+            );
+
+        $response->assertRedirect(
+            route('home')
+        );
+
+        $response->assertSessionHasErrors([
+            'google_business',
+        ]);
+    }
+
     public function test_website_only_flow_still_works_before_google_selector_is_connected(): void
     {
         $websiteScan = [

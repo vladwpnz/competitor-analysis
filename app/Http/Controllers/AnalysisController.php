@@ -192,6 +192,19 @@ class AnalysisController extends Controller
                     );
 
                 if (
+                    $this->googlePlaceIsAddressOnly(
+                        $googlePlace
+                    )
+                ) {
+                    return back()
+                        ->withErrors([
+                            'google_business'
+                                => 'Please select your actual Google Business Profile, not a street address or map location.',
+                        ])
+                        ->withInput();
+                }
+
+                if (
                     ! $this->googleBusinessMatchesWebsite(
                         $validated['website'],
                         $googlePlace
@@ -378,6 +391,116 @@ class AnalysisController extends Controller
         }
 
         return $value;
+    }
+
+    private function googlePlaceIsAddressOnly(
+        array $googlePlace
+    ): bool {
+        if (
+            data_get(
+                $googlePlace,
+                'pureServiceAreaBusiness'
+            ) === true
+        ) {
+            return false;
+        }
+
+        $types = data_get(
+            $googlePlace,
+            'types',
+            []
+        );
+
+        if (! is_array($types)) {
+            $types = [];
+        }
+
+        $primaryType = data_get(
+            $googlePlace,
+            'primaryType'
+        );
+
+        if (
+            is_string($primaryType)
+            && trim($primaryType) !== ''
+        ) {
+            $types[] = $primaryType;
+        }
+
+        if ($types === []) {
+            /*
+             * Missing type information must not block a potentially valid
+             * business. We reject only places Google explicitly identifies
+             * purely as geographic/address entities.
+             */
+            return false;
+        }
+
+        $normalizedTypes = [];
+
+        foreach ($types as $type) {
+            if (
+                ! is_string($type)
+                || trim($type) === ''
+            ) {
+                continue;
+            }
+
+            $normalizedTypes[] = mb_strtolower(
+                trim($type)
+            );
+        }
+
+        if ($normalizedTypes === []) {
+            return false;
+        }
+
+        $addressOnlyTypes = [
+            'street_address',
+            'route',
+            'intersection',
+            'premise',
+            'subpremise',
+            'street_number',
+            'floor',
+            'room',
+            'postal_code',
+            'postal_code_prefix',
+            'postal_code_suffix',
+            'postal_town',
+            'locality',
+            'sublocality',
+            'sublocality_level_1',
+            'sublocality_level_2',
+            'sublocality_level_3',
+            'sublocality_level_4',
+            'sublocality_level_5',
+            'neighborhood',
+            'administrative_area_level_1',
+            'administrative_area_level_2',
+            'administrative_area_level_3',
+            'administrative_area_level_4',
+            'administrative_area_level_5',
+            'administrative_area_level_6',
+            'administrative_area_level_7',
+            'country',
+            'geocode',
+            'plus_code',
+        ];
+
+        foreach ($normalizedTypes as $type) {
+            if (
+                ! in_array(
+                    $type,
+                    $addressOnlyTypes,
+                    true
+                )
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function googleBusinessMatchesWebsite(

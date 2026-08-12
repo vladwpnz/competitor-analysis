@@ -326,6 +326,150 @@ class CompetitorRelevanceScorerTest extends TestCase
             $ranked[0]['_relevance']['score']
         );
     }
+    public function test_healthcare_specialty_matching_does_not_confuse_physical_with_physician(): void
+    {
+        $scorer = app(
+            CompetitorRelevanceScorer::class
+        );
+
+        $searchProfile = [
+            'business_type'
+                => 'Physical Therapy Clinic',
+
+            'services' => [
+                'physical therapy',
+                'rehabilitation',
+            ],
+
+            'search_queries' => [
+                'Physical Therapy Clinic',
+                'Physical Therapist',
+            ],
+
+            'vertical'
+                => 'healthcare_local',
+
+            'industry'
+                => 'Physical Therapy',
+
+            'market_scope'
+                => 'local',
+        ];
+
+        $candidate = [
+            'id' => 'physician-office',
+
+            'displayName' => [
+                'text' => 'Physician Associates',
+            ],
+
+            'primaryType'
+                => 'doctor',
+
+            'primaryTypeDisplayName' => [
+                'text' => 'Doctor',
+            ],
+
+            'types' => [
+                'doctor',
+                'health',
+            ],
+
+            '_match' => [
+                'query_hits' => 1,
+
+                'queries' => [
+                    'Physical Therapy Clinic',
+                ],
+
+                'distance_km' => 2.0,
+            ],
+        ];
+
+        $result = $scorer->score(
+            $candidate,
+            $searchProfile
+        );
+
+        $this->assertSame(
+            0.0,
+            $result['evidence'][
+                'healthcare_specialty_ratio'
+            ]
+        );
+    }
+
+    public function test_healthcare_specialty_matching_keeps_real_word_variants(): void
+    {
+        $scorer = app(
+            CompetitorRelevanceScorer::class
+        );
+
+        $searchProfile = [
+            'business_type'
+                => 'Dermatology Clinic',
+
+            'services' => [
+                'dermatology',
+            ],
+
+            'search_queries' => [
+                'Dermatology Clinic',
+            ],
+
+            'vertical'
+                => 'healthcare_local',
+
+            'industry'
+                => 'Dermatology',
+
+            'market_scope'
+                => 'local',
+        ];
+
+        $candidate = [
+            'id' => 'dermatologist',
+
+            'displayName' => [
+                'text' => 'Austin Dermatologist',
+            ],
+
+            'primaryType'
+                => 'doctor',
+
+            'primaryTypeDisplayName' => [
+                'text' => 'Doctor',
+            ],
+
+            'types' => [
+                'doctor',
+                'health',
+            ],
+
+            '_match' => [
+                'query_hits' => 1,
+
+                'queries' => [
+                    'Dermatology Clinic',
+                ],
+
+                'distance_km' => 5.0,
+            ],
+        ];
+
+        $result = $scorer->score(
+            $candidate,
+            $searchProfile
+        );
+
+        $this->assertSame(
+            1.0,
+            $result['evidence'][
+                'healthcare_specialty_ratio'
+            ]
+        );
+    }
+
     public function test_specialized_local_healthcare_uses_name_evidence_when_google_type_is_generic(): void
     {
         $scorer = app(

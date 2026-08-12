@@ -136,6 +136,117 @@ class GoogleBusinessSearchTest extends TestCase
             );
     }
 
+    public function test_it_filters_address_only_predictions_from_business_search(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('autocompleteBusinesses')
+            ->once()
+            ->with(
+                '6263 McNeil Dr',
+                $sessionToken
+            )
+            ->andReturn([
+                [
+                    'placePrediction' => [
+                        'placeId'
+                            => 'address-only',
+
+                        'text' => [
+                            'text'
+                                => '6263 McNeil Dr, Austin, TX, USA',
+                        ],
+
+                        'structuredFormat' => [
+                            'mainText' => [
+                                'text'
+                                    => '6263 McNeil Dr',
+                            ],
+
+                            'secondaryText' => [
+                                'text'
+                                    => 'Austin, TX, USA',
+                            ],
+                        ],
+
+                        'types' => [
+                            'street_address',
+                            'geocode',
+                        ],
+                    ],
+                ],
+
+                [
+                    'placePrediction' => [
+                        'placeId'
+                            => 'real-business',
+
+                        'text' => [
+                            'text'
+                                => 'Example Plumbing, Austin, TX, USA',
+                        ],
+
+                        'structuredFormat' => [
+                            'mainText' => [
+                                'text'
+                                    => 'Example Plumbing',
+                            ],
+
+                            'secondaryText' => [
+                                'text'
+                                    => 'Austin, TX, USA',
+                            ],
+                        ],
+
+                        'types' => [
+                            'plumber',
+                            'establishment',
+                        ],
+                    ],
+                ],
+            ]);
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $response = $this->getJson(
+            route(
+                'google-business.search',
+                [
+                    'q'
+                        => '6263 McNeil Dr',
+
+                    'session_token'
+                        => $sessionToken,
+                ]
+            )
+        );
+
+        $response
+            ->assertOk()
+            ->assertJsonCount(
+                1,
+                'suggestions'
+            )
+            ->assertJsonPath(
+                'suggestions.0.place_id',
+                'real-business'
+            );
+    }
+
     public function test_it_rejects_short_search_query(): void
     {
         $googlePlaces = Mockery::mock(

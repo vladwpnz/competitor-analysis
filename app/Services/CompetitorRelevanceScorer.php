@@ -553,15 +553,55 @@ class CompetitorRelevanceScorer
             return true;
         }
 
+        $leftLength = mb_strlen($left);
+        $rightLength = mb_strlen($right);
+
+        /*
+         * Healthcare terms often differ only by their professional suffix:
+         * dermatology / dermatologist,
+         * psychology / psychologist,
+         * orthodontic / orthodontist.
+         *
+         * A four-character prefix is too permissive and can create false
+         * matches such as physical / physician or orthopedic / orthodontic.
+         */
         if (
-            mb_strlen($left) < 6
-            || mb_strlen($right) < 6
+            $leftLength < 7
+            || $rightLength < 7
         ) {
             return false;
         }
 
-        return mb_substr($left, 0, 4)
-            === mb_substr($right, 0, 4);
+        $maxPrefixLength = min(
+            $leftLength,
+            $rightLength
+        );
+
+        $commonPrefixLength = 0;
+
+        for (
+            $index = 0;
+            $index < $maxPrefixLength;
+            $index++
+        ) {
+            if (
+                mb_substr($left, $index, 1)
+                !== mb_substr($right, $index, 1)
+            ) {
+                break;
+            }
+
+            $commonPrefixLength++;
+        }
+
+        if ($commonPrefixLength < 7) {
+            return false;
+        }
+
+        return
+            $commonPrefixLength
+                / min($leftLength, $rightLength)
+            >= 0.75;
     }
 
     private function targetsDistributorModel(

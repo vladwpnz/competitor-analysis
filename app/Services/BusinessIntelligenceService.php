@@ -144,6 +144,42 @@ class BusinessIntelligenceService
             true
         );
 
+        $businessModel = $this->cleanString(
+            data_get(
+                $classification,
+                'business_model'
+            ),
+            140
+        );
+
+        $industry = $this->cleanString(
+            data_get(
+                $classification,
+                'industry'
+            ),
+            160
+        );
+
+        $targetCustomers = $this->cleanStringList(
+            data_get(
+                $classification,
+                'target_customers',
+                []
+            ),
+            6,
+            120
+        );
+
+        $competitorTypes = $this->cleanStringList(
+            data_get(
+                $classification,
+                'competitor_types',
+                []
+            ),
+            6,
+            120
+        );
+
         if (
             data_get(
                 $classification,
@@ -165,6 +201,22 @@ class BusinessIntelligenceService
             $searchProfile['search_queries']
                 = $queries;
         }
+
+        if ($businessModel !== null) {
+            $searchProfile['business_model']
+                = $businessModel;
+        }
+
+        if ($industry !== null) {
+            $searchProfile['industry']
+                = $industry;
+        }
+
+        $searchProfile['target_customers']
+            = $targetCustomers;
+
+        $searchProfile['competitor_types']
+            = $competitorTypes;
 
         $searchProfile['services']
             = $services;
