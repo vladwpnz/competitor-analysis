@@ -139,7 +139,7 @@ class AnalysisController extends Controller
                 );
 
                 $websiteScanWarning =
-                    'We couldnвЂ™t read this website directly, so these matches are based mainly on the Google Business Profile.';
+                    'We could not read this website directly, so these matches are based mainly on the Google Business Profile.';
             }
         }
 
@@ -191,6 +191,20 @@ class AnalysisController extends Controller
                         true
                     );
 
+                if (
+                    ! $this->googleBusinessMatchesWebsite(
+                        $validated['website'],
+                        $googlePlace
+                    )
+                ) {
+                    return back()
+                        ->withErrors([
+                            'google_business'
+                                => 'The selected Google Business Profile appears to belong to a different website. Please choose the profile that matches your business.',
+                        ])
+                        ->withInput();
+                }
+
                 $analysisResult = $competitorAnalysis->analyze(
                     $websiteScan,
                     $googlePlace
@@ -237,24 +251,23 @@ class AnalysisController extends Controller
             'analysis.result'
                 => $analysisResult,
 
-            /*
-             * Keep the user's editable competitor set separate from the
-             * ranked analysis result. Manual add/remove actions update this
-             * list without mutating the original ranking payload.
-             */
             'analysis.selected_competitors'
                 => is_array($analysisResult)
-                    ? array_values(
-                        array_filter(
+                    && is_array(
+                        data_get(
+                            $analysisResult,
+                            'top_competitors',
+                            []
+                        )
+                    )
+                        ? array_values(
                             data_get(
                                 $analysisResult,
                                 'top_competitors',
                                 []
-                            ),
-                            'is_array'
+                            )
                         )
-                    )
-                    : [],
+                        : [],
         ]);
 
         return redirect()
@@ -298,30 +311,13 @@ class AnalysisController extends Controller
             'analysis.website_scan_warning'
         );
 
-        $selectedCompetitors = session(
-            'analysis.selected_competitors'
-        );
-
-        if (is_array($selectedCompetitors)) {
-            $topCompetitors = array_values(
-                array_filter(
-                    $selectedCompetitors,
-                    'is_array'
-                )
-            );
-        } else {
-            /*
-             * Backwards compatibility for sessions created before competitor
-             * customization was introduced.
-             */
-            $topCompetitors = is_array($analysisResult)
-                ? data_get(
-                    $analysisResult,
-                    'top_competitors',
-                    []
-                )
-                : [];
-        }
+        $topCompetitors = is_array($analysisResult)
+            ? data_get(
+                $analysisResult,
+                'top_competitors',
+                []
+            )
+            : [];
 
         return view(
             'competitors',
@@ -382,6 +378,80 @@ class AnalysisController extends Controller
         }
 
         return $value;
+    }
+
+    private function googleBusinessMatchesWebsite(
+        string $website,
+        array $googlePlace
+    ): bool {
+        $googleWebsite = data_get(
+            $googlePlace,
+            'websiteUri'
+        );
+
+        if (
+            ! is_string($googleWebsite)
+            || trim($googleWebsite) === ''
+        ) {
+            return true;
+        }
+
+        $websiteHost = $this->normalizedHost(
+            $website
+        );
+
+        $googleHost = $this->normalizedHost(
+            $googleWebsite
+        );
+
+        if (
+            $websiteHost === null
+            || $googleHost === null
+        ) {
+            return true;
+        }
+
+        return
+            $websiteHost === $googleHost
+            || str_ends_with(
+                $websiteHost,
+                '.' . $googleHost
+            )
+            || str_ends_with(
+                $googleHost,
+                '.' . $websiteHost
+            );
+    }
+
+    private function normalizedHost(
+        string $url
+    ): ?string {
+        $host = parse_url(
+            $url,
+            PHP_URL_HOST
+        );
+
+        if (
+            ! is_string($host)
+            || trim($host) === ''
+        ) {
+            return null;
+        }
+
+        $host = mb_strtolower(
+            trim($host)
+        );
+
+        if (str_starts_with($host, 'www.')) {
+            $host = mb_substr(
+                $host,
+                4
+            );
+        }
+
+        return $host === ''
+            ? null
+            : $host;
     }
 
     private function websiteHttpFailureStatus(

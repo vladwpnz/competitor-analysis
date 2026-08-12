@@ -656,7 +656,7 @@
         <h2 id="add-competitor-title">Add a Competitor</h2>
         <p>
             {{ $isDigitalGlobal
-                ? 'Search direct product competitors by company name or official domain.'
+                ? 'Search direct competitors by company name or official domain.'
                 : 'Search Google by business name or website, then choose the correct business.' }}
         </p>
 

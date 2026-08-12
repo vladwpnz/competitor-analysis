@@ -43,7 +43,7 @@ class GeminiCompetitorDiscoveryService
             ) !== 'digital_global'
         ) {
             throw new UnexpectedValueException(
-                'Direct AI competitor discovery is only available for digital_global businesses.'
+                'Semantic AI competitor discovery is only available for digital_global businesses.'
             );
         }
 
@@ -174,7 +174,7 @@ class GeminiCompetitorDiscoveryService
             ) !== 'digital_global'
         ) {
             throw new UnexpectedValueException(
-                'Direct AI competitor search is only available for digital_global businesses.'
+                'Semantic AI competitor search is only available for digital_global businesses.'
             );
         }
 
@@ -394,7 +394,7 @@ class GeminiCompetitorDiscoveryService
 
             'system_instruction'
                 => $this->systemInstruction()
-                    . ' For manual competitor search, follow the user search text closely. If it names or strongly identifies a specific company or domain, only return it when it is a real direct product/platform competitor of the subject. For partial searches, return only direct competitors that genuinely match the text. Return an empty competitors array when there is no confident direct competitor match; never substitute an unrelated company.',
+                    . ' For manual competitor search, follow the user search text closely. If it names or strongly identifies a specific company or domain, only return it when it is a real direct competitor of the subject. For partial searches, return only direct competitors that genuinely match the text. Return an empty competitors array when there is no confident direct competitor match; never substitute an unrelated company.',
 
             'response_format' => [
                 'type' => 'text',
@@ -428,14 +428,14 @@ class GeminiCompetitorDiscoveryService
             ' ',
             [
                 'You are the direct competitor discovery component of a market-intelligence application.',
-                'This request is only for businesses already classified as digital_global.',
-                'Identify direct competing companies whose core product or platform is a realistic substitute for the subject business for similar target customers.',
-                'Prefer established product/platform vendors with substantial overlap in the subject business core offering.',
-                'Exclude software development agencies, consultants, implementation partners, resellers, distributors, review sites, directories, publishers, generic IT service companies, and companies that are only adjacent rather than direct competitors.',
+                'This request is for businesses already classified for semantic, non-local competitor discovery.',
+                'Identify direct competing companies whose core product, service, or business model is a realistic substitute for the subject business for similar target customers.',
+                'Prefer established companies with substantial overlap in the subject business core offering, customer type, and operating model.',
+                'Exclude agencies, consultants, implementation partners, review sites, directories, publishers, and adjacent businesses unless the subject itself operates in that same business model. Do not exclude distributors, brokers, lenders, insurers, marketplaces, or service firms when that is the subject business core model.',
                 'Never return the subject company itself.',
                 'Do not pad the list with weak or obscure matches just to reach a fixed count; omit uncertain candidates rather than guessing.',
                 'Return each company official domain as a hostname only, without protocol, path, query string, or marketing URL.',
-                'Keep the reason concise and explain the direct product-market overlap.',
+                'Keep the reason concise and explain the direct competitive overlap.',
             ]
         );
     }
@@ -559,7 +559,7 @@ class GeminiCompetitorDiscoveryService
         );
 
         return
-            "Identify up to 8 direct competitors for this digital/global business.\n"
+            "Identify up to 8 direct competitors for this non-local/global business.\n"
             . "Business context:\n"
             . json_encode(
                 $context,
@@ -663,7 +663,7 @@ class GeminiCompetitorDiscoveryService
         return
             'Manual competitor search query: '
             . $query
-            . "\nFind up to 6 direct product/platform competitors for the subject business that specifically match this query. "
+            . "\nFind up to 6 direct competitors for the subject business that specifically match this query. "
             . "If the query identifies one exact competitor, return that company only. Return an empty list if there is no confident direct competitor match.\n"
             . "Business context:\n"
             . json_encode(
@@ -719,7 +719,7 @@ class GeminiCompetitorDiscoveryService
                             'reason' => [
                                 'type' => 'string',
                                 'description'
-                                    => 'Short explanation of direct product-market overlap.',
+                                    => 'Short explanation of direct competitive overlap.',
                             ],
                         ],
                         'required' => [

@@ -169,7 +169,7 @@ class CompetitorSelectionTest extends TestCase
             )
             ->assertJsonPath(
                 'suggestions.0.category',
-                'Direct Product Competitor'
+                'Direct Competitor'
             );
 
         $response->assertSessionHas(
@@ -345,7 +345,7 @@ class CompetitorSelectionTest extends TestCase
             )
             ->assertJsonPath(
                 'competitor.category',
-                'Direct Product Competitor'
+                'Direct Competitor'
             )
             ->assertJsonPath(
                 'competitor.show_distance',
@@ -790,7 +790,7 @@ class CompetitorSelectionTest extends TestCase
                 => 'digital_platform',
             'primaryTypeDisplayName' => [
                 'text'
-                    => 'Direct Product Competitor',
+                    => 'Direct Competitor',
             ],
             'types' => [
                 'digital_platform',

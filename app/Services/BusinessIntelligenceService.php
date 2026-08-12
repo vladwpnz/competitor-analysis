@@ -264,7 +264,8 @@ class BusinessIntelligenceService
 
         $discoveryMode = $this->stabilizeDiscoveryMode(
             $discoveryMode,
-            $marketScope
+            $marketScope,
+            $vertical
         );
 
         $confidence = $this->requiredEnum(
@@ -626,6 +627,15 @@ class BusinessIntelligenceService
         string $businessType,
         array $businessProfile
     ): string {
+        /*
+         * Patient-facing healthcare practices are normally chosen by area.
+         * Keep clinics, dentists, dermatology and similar practices local
+         * even when a model over-generalizes a multi-location brand.
+         */
+        if ($vertical === 'healthcare_local') {
+            return 'local';
+        }
+
         if ($marketScope === 'broader') {
             return 'broader';
         }
@@ -697,7 +707,8 @@ class BusinessIntelligenceService
 
     private function stabilizeDiscoveryMode(
         string $discoveryMode,
-        string $marketScope
+        string $marketScope,
+        string $vertical
     ): string {
         /*
          * Discovery mode describes where competitors should be discovered,
@@ -712,6 +723,15 @@ class BusinessIntelligenceService
         }
 
         if ($marketScope === 'broader') {
+            /*
+             * National/global finance businesses compete by offering and
+             * brand rather than by nearby office location. Reuse semantic AI
+             * discovery for mortgage, insurance, banking and similar markets.
+             */
+            if ($vertical === 'financial_services') {
+                return 'digital_global';
+            }
+
             if ($discoveryMode === 'local_physical') {
                 return 'broader_physical';
             }

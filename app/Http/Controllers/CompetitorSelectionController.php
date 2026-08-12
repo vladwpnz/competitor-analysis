@@ -615,7 +615,7 @@ class CompetitorSelectionController extends Controller
                     ''
                 ),
                 'category'
-                    => 'Direct Product Competitor',
+                    => 'Direct Competitor',
             ];
         }
 
@@ -752,7 +752,7 @@ class CompetitorSelectionController extends Controller
 
             'primaryTypeDisplayName' => [
                 'text'
-                    => 'Direct Product Competitor',
+                    => 'Direct Competitor',
             ],
 
             'types' => [

@@ -499,7 +499,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
 
         $this->assertSame(
-            'Direct Product Competitor',
+            'Direct Competitor',
             data_get(
                 $result,
                 'top_competitors.0.primaryTypeDisplayName.text'

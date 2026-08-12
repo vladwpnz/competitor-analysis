@@ -321,7 +321,7 @@ class CompetitorAnalysisService
 
             'primaryTypeDisplayName' => [
                 'text'
-                    => 'Direct Product Competitor',
+                    => 'Direct Competitor',
             ],
 
             'types' => [

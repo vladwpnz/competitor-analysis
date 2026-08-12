@@ -302,6 +302,122 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
     }
 
+    public function test_broader_financial_service_uses_semantic_global_discovery(): void
+    {
+        $result = [
+            'business_model' => 'national mortgage lender',
+            'business_type' => 'Mortgage Lender',
+            'vertical' => 'financial_services',
+            'industry' => 'Residential mortgage lending',
+            'market_scope' => 'broader',
+            'discovery_mode' => 'broader_physical',
+            'products_services' => [
+                'mortgage lending',
+                'home loans',
+            ],
+            'target_customers' => [
+                'home buyers',
+                'homeowners',
+            ],
+            'competitor_types' => [
+                'mortgage lender',
+                'mortgage company',
+            ],
+            'search_queries' => [
+                'Mortgage Lender',
+                'Mortgage Company',
+            ],
+            'geography_weight' => 'low',
+            'confidence' => 'high',
+        ];
+
+        $service = $this->serviceWithAiResult(
+            $result
+        );
+
+        $classification = $service->classify([
+            'website' => [
+                'url' => 'https://example-mortgage.test',
+            ],
+            'classification_input' => [
+                'business_name' => 'Example Mortgage',
+                'website_title' => 'National Mortgage Lender',
+                'website_description' => 'Home loans across the United States.',
+                'homepage_text' => 'Mortgage lending for customers nationwide.',
+            ],
+        ]);
+
+        $this->assertSame(
+            'broader',
+            $classification['market_scope']
+        );
+
+        $this->assertSame(
+            'digital_global',
+            $classification['discovery_mode']
+        );
+    }
+
+    public function test_healthcare_local_cannot_become_national_distance_free_discovery(): void
+    {
+        $result = [
+            'business_model' => 'multi-location dermatology practice',
+            'business_type' => 'Dermatology Clinic',
+            'vertical' => 'healthcare_local',
+            'industry' => 'Dermatology',
+            'market_scope' => 'broader',
+            'discovery_mode' => 'broader_physical',
+            'products_services' => [
+                'dermatology',
+                'skin care',
+            ],
+            'target_customers' => [
+                'local patients',
+            ],
+            'competitor_types' => [
+                'dermatology clinic',
+                'dermatologist',
+            ],
+            'search_queries' => [
+                'Dermatologist',
+                'Dermatology Clinic',
+            ],
+            'geography_weight' => 'low',
+            'confidence' => 'high',
+        ];
+
+        $service = $this->serviceWithAiResult(
+            $result
+        );
+
+        $classification = $service->classify([
+            'website' => [
+                'url' => 'https://example-dermatology.test',
+            ],
+            'classification_input' => [
+                'business_name' => 'Example Dermatology',
+                'website_title' => 'Dermatology Clinic',
+                'website_description' => 'Local dermatology and cosmetic skin care.',
+                'homepage_text' => 'Appointments for local patients.',
+            ],
+        ]);
+
+        $this->assertSame(
+            'local',
+            $classification['market_scope']
+        );
+
+        $this->assertSame(
+            'local_physical',
+            $classification['discovery_mode']
+        );
+
+        $this->assertSame(
+            'high',
+            $classification['geography_weight']
+        );
+    }
+
     public function test_broader_market_cannot_remain_local_physical_discovery(): void
     {
         $result = $this->industrialDistributorAiResult();

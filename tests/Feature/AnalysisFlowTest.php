@@ -317,6 +317,101 @@ class AnalysisFlowTest extends TestCase
         );
     }
 
+    public function test_selected_google_business_with_different_website_is_rejected_before_analysis(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $websiteScan = [
+            'final_url' => 'https://stripe.com',
+            'status' => 200,
+            'title' => 'Stripe',
+            'meta_description' => 'Payments infrastructure for the internet.',
+            'h1' => [],
+            'h2' => [],
+            'text' => 'Payments infrastructure.',
+        ];
+
+        $googlePlace = [
+            'id' => 'wrong-place',
+            'displayName' => [
+                'text' => 'Stripe Yoga Studio',
+            ],
+            'websiteUri' => 'https://stripeyoga.example',
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with('https://stripe.com')
+            ->andReturn($websiteScan);
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('getPlaceDetails')
+            ->once()
+            ->with(
+                'wrong-place',
+                $sessionToken,
+                true
+            )
+            ->andReturn($googlePlace);
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis
+            ->shouldNotReceive('analyze');
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this
+            ->from(route('home'))
+            ->post(
+                route('analysis.start'),
+                [
+                    'website' => 'https://stripe.com',
+                    'google_business' => 'Stripe Yoga Studio',
+                    'google_place_id' => 'wrong-place',
+                    'google_places_session_token' => $sessionToken,
+                ]
+            );
+
+        $response->assertRedirect(
+            route('home')
+        );
+
+        $response->assertSessionHasErrors([
+            'google_business',
+        ]);
+    }
+
     public function test_website_only_flow_still_works_before_google_selector_is_connected(): void
     {
         $websiteScan = [
@@ -892,7 +987,7 @@ class AnalysisFlowTest extends TestCase
 
         $response->assertSessionHas(
             'analysis.website_scan_warning',
-            'We couldnвЂ™t read this website directly, so these matches are based mainly on the Google Business Profile.'
+            'We could not read this website directly, so these matches are based mainly on the Google Business Profile.'
         );
     }
 
