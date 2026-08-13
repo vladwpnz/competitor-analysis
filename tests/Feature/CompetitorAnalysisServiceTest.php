@@ -656,6 +656,295 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
     }
 
+    public function test_broader_physical_analysis_uses_website_first_ai_discovery_without_google_places(): void
+    {
+        $businessIntelligence = Mockery::mock(
+            BusinessIntelligenceService::class
+        );
+
+        $businessIntelligence
+            ->shouldReceive('classify')
+            ->once()
+            ->andReturn([
+                'business_model'
+                    => 'Industrial automation and fluid power distributor',
+                'business_type'
+                    => 'Industrial Distributor',
+                'vertical'
+                    => 'industrial',
+                'industry'
+                    => 'Industrial Automation and Fluid Power Distribution',
+                'market_scope'
+                    => 'broader',
+                'geography_weight'
+                    => 'low',
+                'radius_strategy_km'
+                    => [300, 1000, 3000],
+                'service_keywords' => [
+                    'industrial automation',
+                    'fluid power',
+                    'motion control',
+                    'filtration',
+                ],
+                'target_customers' => [
+                    'industrial manufacturers',
+                    'OEMs',
+                    'engineering teams',
+                ],
+                'competitor_types' => [
+                    'industrial distributors',
+                    'automation distributors',
+                    'fluid power distributors',
+                ],
+                'search_queries' => [
+                    'industrial automation distributor',
+                    'fluid power distributor',
+                ],
+                'discovery_mode'
+                    => 'broader_physical',
+                'confidence'
+                    => 'high',
+                '_classification_source'
+                    => 'ai',
+            ]);
+
+        $businessIntelligence
+            ->shouldReceive('applySearchIntent')
+            ->once()
+            ->andReturnUsing(
+                static function (
+                    array $searchProfile,
+                    array $classification
+                ): array {
+                    $searchProfile['business_type']
+                        = $classification['business_type'];
+                    $searchProfile['business_model']
+                        = $classification['business_model'];
+                    $searchProfile['vertical']
+                        = $classification['vertical'];
+                    $searchProfile['market_scope']
+                        = $classification['market_scope'];
+                    $searchProfile['geography_weight']
+                        = $classification['geography_weight'];
+                    $searchProfile['discovery_mode']
+                        = $classification['discovery_mode'];
+                    $searchProfile['services']
+                        = $classification['service_keywords'];
+
+                    return $searchProfile;
+                }
+            );
+
+        $this->app->instance(
+            BusinessIntelligenceService::class,
+            $businessIntelligence
+        );
+
+        $discovery = Mockery::mock(
+            GeminiCompetitorDiscoveryService::class
+        );
+
+        $discovery
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturnTrue();
+
+        $discovery
+            ->shouldReceive('discover')
+            ->once()
+            ->with(
+                Mockery::on(
+                    static function (
+                        array $businessProfile
+                    ): bool {
+                        return
+                            data_get(
+                                $businessProfile,
+                                'website.url'
+                            ) === 'https://www.wainbee.com/'
+                            && str_contains(
+                                (string) data_get(
+                                    $businessProfile,
+                                    'website.text',
+                                    ''
+                                ),
+                                'industrial automation'
+                            );
+                    }
+                ),
+                Mockery::on(
+                    static fn (
+                        array $classification
+                    ): bool =>
+                        data_get(
+                            $classification,
+                            'discovery_mode'
+                        ) === 'broader_physical'
+                )
+            )
+            ->andReturn([
+                [
+                    'name' => 'Wajax',
+                    'domain' => 'wajax.com',
+                    'reason'
+                        => 'Competes in industrial products, automation and engineered solutions.',
+                ],
+                [
+                    'name' => 'Applied Industrial Technologies',
+                    'domain' => 'applied.com',
+                    'reason'
+                        => 'Competes as a broad industrial distributor serving similar customers.',
+                ],
+                [
+                    'name' => 'Motion Industries',
+                    'domain' => 'motion.com',
+                    'reason'
+                        => 'Competes in industrial distribution, motion and automation products.',
+                ],
+                [
+                    'name' => 'Bosch Rexroth',
+                    'domain' => 'boschrexroth.com',
+                    'reason'
+                        => 'Competes in motion, control and industrial automation solutions.',
+                ],
+                [
+                    'name' => 'SMC',
+                    'domain' => 'smcworld.com',
+                    'reason'
+                        => 'Competes in industrial automation and pneumatic control solutions.',
+                ],
+            ]);
+
+        $this->app->instance(
+            GeminiCompetitorDiscoveryService::class,
+            $discovery
+        );
+
+        $competitorSearch = Mockery::mock(
+            CompetitorSearchService::class
+        );
+
+        $competitorSearch->shouldNotReceive(
+            'findCandidates'
+        );
+
+        $competitorEnrichment = Mockery::mock(
+            CompetitorEnrichmentService::class
+        );
+
+        $competitorEnrichment->shouldNotReceive(
+            'enrich'
+        );
+
+        $service = new CompetitorAnalysisService(
+            app(BusinessProfileBuilder::class),
+            app(BusinessClassifier::class),
+            app(SearchProfileBuilder::class),
+            $competitorSearch,
+            app(CompetitorRelevanceScorer::class),
+            $competitorEnrichment
+        );
+
+        $googlePlace = [
+            'id' => 'wainbee-mississauga',
+            'displayName' => [
+                'text' => 'Wainbee Limited',
+                'languageCode' => 'en',
+            ],
+            'formattedAddress'
+                => '5789 Coopers Ave, Mississauga, ON, Canada',
+            'primaryType'
+                => 'industrial_equipment_supplier',
+            'primaryTypeDisplayName' => [
+                'text' => 'Industrial Equipment Supplier',
+                'languageCode' => 'en',
+            ],
+            'types' => [
+                'industrial_equipment_supplier',
+            ],
+            'location' => [
+                'latitude' => 43.6500,
+                'longitude' => -79.6500,
+            ],
+            'businessStatus'
+                => 'OPERATIONAL',
+            'pureServiceAreaBusiness'
+                => false,
+            'websiteUri'
+                => 'https://www.wainbee.com/',
+        ];
+
+        $result = $service->analyze(
+            [
+                'final_url'
+                    => 'https://www.wainbee.com/',
+                'status'
+                    => 200,
+                'title'
+                    => 'Wainbee: Industrial Solutions for Engineered Systems in Canada',
+                'meta_description'
+                    => 'Industrial automation, motion, control and filtration solutions.',
+                'h1' => [
+                    'Industrial Solutions for Engineered Systems',
+                ],
+                'h2' => [
+                    'Industrial Automation',
+                    'Motion and Control',
+                    'Filtration',
+                ],
+                'text'
+                    => 'Wainbee provides industrial automation, fluid power, motion control and filtration solutions across Canada.',
+            ],
+            $googlePlace
+        );
+
+        $this->assertSame(
+            'broader_physical',
+            data_get(
+                $result,
+                'classification.discovery_mode'
+            )
+        );
+
+        $this->assertSame(
+            'ai_direct',
+            $result['discovery_source']
+        );
+
+        $this->assertSame(
+            ['ai_direct'],
+            $result['search_stages']
+        );
+
+        $this->assertCount(
+            5,
+            $result['top_competitors']
+        );
+
+        $this->assertSame(
+            'Wajax',
+            data_get(
+                $result,
+                'top_competitors.0.displayName.text'
+            )
+        );
+
+        $this->assertSame(
+            'https://wajax.com',
+            data_get(
+                $result,
+                'top_competitors.0.websiteUri'
+            )
+        );
+
+        $this->assertNull(
+            data_get(
+                $result,
+                'top_competitors.0._match.distance_km'
+            )
+        );
+    }
+
     public function test_failed_digital_discovery_falls_back_to_existing_google_places_pipeline(): void
     {
         $businessIntelligence = Mockery::mock(

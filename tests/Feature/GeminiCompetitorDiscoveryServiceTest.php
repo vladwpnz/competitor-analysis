@@ -307,31 +307,94 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
         );
     }
 
-    public function test_it_rejects_non_digital_global_classification(): void
+    public function test_it_allows_broader_physical_classification_for_website_discovery(): void
     {
         config([
             'ai.gemini.api_key'
                 => 'test-gemini-key',
         ]);
 
-        Http::fake();
+        Http::fake([
+            '*' => Http::response(
+                [
+                    'status' => 'completed',
+                    'steps' => [
+                        [
+                            'type' => 'model_output',
+                            'content' => [
+                                [
+                                    'type' => 'text',
+                                    'text' => json_encode(
+                                        [
+                                            'competitors' => [
+                                                [
+                                                    'name' => 'Salesforce',
+                                                    'domain' => 'salesforce.com',
+                                                    'reason'
+                                                        => 'Direct company-level competitor.',
+                                                ],
+                                            ],
+                                        ],
+                                        JSON_THROW_ON_ERROR
+                                    ),
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+                200
+            ),
+        ]);
 
         $classification = $this->hubspotClassification();
         $classification['discovery_mode']
             = 'broader_physical';
 
-        $this->expectException(
-            UnexpectedValueException::class
-        );
-
-        app(
+        $result = app(
             GeminiCompetitorDiscoveryService::class
         )->discover(
             $this->hubspotProfile(),
             $classification
         );
 
-        Http::assertNothingSent();
+        $this->assertCount(
+            1,
+            $result
+        );
+
+        $this->assertSame(
+            'Salesforce',
+            $result[0]['name']
+        );
+
+        $this->assertSame(
+            'salesforce.com',
+            $result[0]['domain']
+        );
+
+        Http::assertSent(
+            function (Request $request): bool {
+                $data = $request->data();
+
+                return
+                    str_contains(
+                        (string) data_get(
+                            $data,
+                            'system_instruction',
+                            ''
+                        ),
+                        'company-level competitors'
+                    )
+                    && str_contains(
+                        (string) data_get(
+                            $data,
+                            'input',
+                            ''
+                        ),
+                        'hubspot.com'
+                    );
+            }
+        );
     }
 
     public function test_it_rejects_invalid_json(): void

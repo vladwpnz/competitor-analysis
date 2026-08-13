@@ -82,7 +82,7 @@ class CompetitorSelectionTest extends TestCase
             );
     }
 
-    public function test_digital_global_manual_search_reuses_cached_ai_candidates_before_live_api(): void
+    public function test_ai_website_manual_search_reuses_cached_candidates_for_broader_physical_analysis(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -131,6 +131,9 @@ class CompetitorSelectionTest extends TestCase
         $session = $this->digitalAnalysisSession([
             $salesforce,
         ]);
+
+        $session['analysis.result']['classification']['discovery_mode']
+            = 'broader_physical';
 
         $session['analysis.result']['digital_candidate_pool'] = [
             $salesforce,
@@ -281,7 +284,7 @@ class CompetitorSelectionTest extends TestCase
             );
     }
 
-    public function test_digital_global_manual_competitor_can_be_added_without_google_place_details(): void
+    public function test_ai_website_manual_competitor_can_be_added_for_broader_physical_analysis_without_google_place_details(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -317,6 +320,9 @@ class CompetitorSelectionTest extends TestCase
                 'Salesforce'
             ),
         ]);
+
+        $session['analysis.result']['classification']['discovery_mode']
+            = 'broader_physical';
 
         $session['analysis.manual_competitor_candidates']
             = [
@@ -755,6 +761,9 @@ class CompetitorSelectionTest extends TestCase
                     'market_scope'
                         => 'broader',
                 ],
+
+                'discovery_source'
+                    => 'ai_direct',
 
                 'top_competitors'
                     => $selectedCompetitors,

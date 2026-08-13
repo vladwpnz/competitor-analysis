@@ -36,17 +36,6 @@ class GeminiCompetitorDiscoveryService
             );
         }
 
-        if (
-            data_get(
-                $classification,
-                'discovery_mode'
-            ) !== 'digital_global'
-        ) {
-            throw new UnexpectedValueException(
-                'Semantic AI competitor discovery is only available for digital_global businesses.'
-            );
-        }
-
         $response = Http::acceptJson()
             ->asJson()
             ->withHeaders([
@@ -149,7 +138,7 @@ class GeminiCompetitorDiscoveryService
 
     /**
      * Search for a manually requested direct competitor inside the same
-     * digital/global competitive set. An empty result is valid when the
+     * website-defined competitive set. An empty result is valid when the
      * query does not confidently identify a direct competitor.
      *
      * @throws ConnectionException
@@ -164,17 +153,6 @@ class GeminiCompetitorDiscoveryService
         if (! $this->isConfigured()) {
             throw new RuntimeException(
                 'Gemini competitor discovery is not configured.'
-            );
-        }
-
-        if (
-            data_get(
-                $classification,
-                'discovery_mode'
-            ) !== 'digital_global'
-        ) {
-            throw new UnexpectedValueException(
-                'Semantic AI competitor search is only available for digital_global businesses.'
             );
         }
 
@@ -428,14 +406,18 @@ class GeminiCompetitorDiscoveryService
             ' ',
             [
                 'You are the direct competitor discovery component of a market-intelligence application.',
-                'This request is for businesses already classified for semantic, non-local competitor discovery.',
-                'Identify direct competing companies whose core product, service, or business model is a realistic substitute for the subject business for similar target customers.',
-                'Prefer established companies with substantial overlap in the subject business core offering, customer type, and operating model.',
+                'The subject website is the primary source of truth for company identity, products and services, business model, target customers, and competitive scope.',
+                'Compare company to company and website to website. Identify direct competing companies whose core offering is a realistic substitute for the subject company for similar target customers.',
+                'Use classification fields only as supporting interpretation of the website. A Google Business Profile or branch name may help identify the subject, but it must not make competitor discovery location-first.',
+                'Do not prefer a company merely because it is geographically close to the selected Google Business location.',
+                'For a multi-location, regional, national, or global company, return company-level competitors that compete with the overall website/business, not nearby branches or small local lookalikes.',
+                'For a genuinely local business, local competitors are appropriate only when the website itself clearly shows that the business competes mainly in a local market.',
+                'Prefer established companies with substantial overlap in core offering, customer type, and operating model.',
                 'Exclude agencies, consultants, implementation partners, review sites, directories, publishers, and adjacent businesses unless the subject itself operates in that same business model. Do not exclude distributors, brokers, lenders, insurers, marketplaces, or service firms when that is the subject business core model.',
-                'Never return the subject company itself.',
+                'Never return the subject company itself, one of its branches, subsidiaries presented as the same brand, or duplicate locations of the same competitor company.',
                 'Do not pad the list with weak or obscure matches just to reach a fixed count; omit uncertain candidates rather than guessing.',
-                'Return each company official domain as a hostname only, without protocol, path, query string, or marketing URL.',
-                'Keep the reason concise and explain the direct competitive overlap.',
+                'Return each competitor official company domain as a hostname only, without protocol, path, query string, or marketing URL.',
+                'Keep the reason concise and explain the direct company-level competitive overlap.',
             ]
         );
     }
@@ -445,15 +427,6 @@ class GeminiCompetitorDiscoveryService
         array $classification
     ): string {
         $context = [
-            'business_name'
-                => $this->boundedString(
-                    data_get(
-                        $businessProfile,
-                        'classification_input.business_name'
-                    ),
-                    160
-                ),
-
             'website_url'
                 => $this->boundedString(
                     data_get(
@@ -478,7 +451,36 @@ class GeminiCompetitorDiscoveryService
                         $businessProfile,
                         'classification_input.website_description'
                     ),
-                    800
+                    1000
+                ),
+
+            'website_headings'
+                => $this->boundedStringList(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.headings',
+                        []
+                    ),
+                    12,
+                    220
+                ),
+
+            'website_homepage_text'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.homepage_text'
+                    ),
+                    5000
+                ),
+
+            'supporting_business_name'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.business_name'
+                    ),
+                    160
                 ),
 
             'business_model'
@@ -559,7 +561,9 @@ class GeminiCompetitorDiscoveryService
         );
 
         return
-            "Identify up to 8 direct competitors for this non-local/global business.\n"
+            "Identify up to 8 direct company-level competitors for the subject website.\n"
+            . "Treat the website fields as primary evidence. Use the classification only as supporting interpretation.\n"
+            . "Do not use proximity to a selected Google Business location as the reason a company is a competitor.\n"
             . "Business context:\n"
             . json_encode(
                 $context,
@@ -576,15 +580,6 @@ class GeminiCompetitorDiscoveryService
         string $query
     ): string {
         $context = [
-            'business_name'
-                => $this->boundedString(
-                    data_get(
-                        $businessProfile,
-                        'classification_input.business_name'
-                    ),
-                    160
-                ),
-
             'website_url'
                 => $this->boundedString(
                     data_get(
@@ -592,6 +587,53 @@ class GeminiCompetitorDiscoveryService
                         'website.url'
                     ),
                     500
+                ),
+
+            'website_title'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.website_title'
+                    ),
+                    300
+                ),
+
+            'website_description'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.website_description'
+                    ),
+                    1000
+                ),
+
+            'website_headings'
+                => $this->boundedStringList(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.headings',
+                        []
+                    ),
+                    12,
+                    220
+                ),
+
+            'website_homepage_text'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.homepage_text'
+                    ),
+                    4000
+                ),
+
+            'supporting_business_name'
+                => $this->boundedString(
+                    data_get(
+                        $businessProfile,
+                        'classification_input.business_name'
+                    ),
+                    160
                 ),
 
             'business_model'
@@ -610,15 +652,6 @@ class GeminiCompetitorDiscoveryService
                         'business_type'
                     ),
                     140
-                ),
-
-            'vertical'
-                => $this->boundedString(
-                    data_get(
-                        $classification,
-                        'vertical'
-                    ),
-                    80
                 ),
 
             'industry'
@@ -663,7 +696,8 @@ class GeminiCompetitorDiscoveryService
         return
             'Manual competitor search query: '
             . $query
-            . "\nFind up to 6 direct competitors for the subject business that specifically match this query. "
+            . "\nFind up to 6 direct competitors for the subject website that specifically match this query. "
+            . "Treat the website as the primary source of truth and compare company to company, not branch to nearby branch. "
             . "If the query identifies one exact competitor, return that company only. Return an empty list if there is no confident direct competitor match.\n"
             . "Business context:\n"
             . json_encode(
@@ -686,7 +720,7 @@ class GeminiCompetitorDiscoveryService
             = self::MAX_SEARCH_RESULTS;
 
         $schema['properties']['competitors']['description']
-            = 'Direct product/platform competitors matching the manual search text, ordered by confidence.';
+            = 'Direct company competitors matching the manual search text, ordered by confidence.';
 
         return $schema;
     }
@@ -700,7 +734,7 @@ class GeminiCompetitorDiscoveryService
                 'competitors' => [
                     'type' => 'array',
                     'description'
-                        => 'Direct product/platform competitors ordered from strongest match to weaker match.',
+                        => 'Direct company competitors ordered from strongest match to weaker match.',
                     'minItems' => 1,
                     'maxItems' => self::MAX_COMPETITORS,
                     'items' => [

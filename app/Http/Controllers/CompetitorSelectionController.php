@@ -43,7 +43,7 @@ class CompetitorSelectionController extends Controller
             $validated['q']
         );
 
-        if ($this->isDigitalGlobalAnalysis()) {
+        if ($this->usesAiWebsiteDiscovery()) {
             return $this->searchDigitalCompetitors(
                 $query,
                 $digitalDiscovery
@@ -263,7 +263,7 @@ class CompetitorSelectionController extends Controller
         }
 
         if (
-            $this->isDigitalGlobalAnalysis()
+            $this->usesAiWebsiteDiscovery()
             && str_starts_with(
                 $placeId,
                 'ai-'
@@ -384,10 +384,10 @@ class CompetitorSelectionController extends Controller
         }
 
         /*
-         * digital_global analysis already asks Gemini for up to eight
-         * direct competitors but shows only five. Search that cached pool
-         * first so common manual additions do not require another API call
-         * or fail because a project-level Gemini rate limit was reached.
+         * AI website discovery already asks Gemini for up to eight direct
+         * competitors but shows only five. Search that cached pool first
+         * so common manual additions do not require another API call or
+         * fail because a project-level Gemini rate limit was reached.
          */
         $cachedMatches = $this->cachedDigitalCompetitorMatches(
             is_array($analysisResult)
@@ -792,14 +792,14 @@ class CompetitorSelectionController extends Controller
         ];
     }
 
-    private function isDigitalGlobalAnalysis(): bool
+    private function usesAiWebsiteDiscovery(): bool
     {
         return data_get(
             session(
                 'analysis.result'
             ),
-            'classification.discovery_mode'
-        ) === 'digital_global';
+            'discovery_source'
+        ) === 'ai_direct';
     }
 
     public function remove(

@@ -57,12 +57,11 @@ class CompetitorAnalysisService
             $classification
         );
 
-        $isDigitalGlobal = data_get(
-            $classification,
-            'discovery_mode'
-        ) === 'digital_global';
+        $useWebsiteDiscovery = $this->hasUsableWebsiteContext(
+            $businessProfile
+        );
 
-        if ($isDigitalGlobal) {
+        if ($useWebsiteDiscovery) {
             $digitalCompetitors = $this->discoverDigitalCompetitors(
                 $businessProfile,
                 $classification
@@ -154,10 +153,56 @@ class CompetitorAnalysisService
                 && count($completedStages) === count($plannedStages),
 
             'discovery_source' =>
-                $isDigitalGlobal
+                $useWebsiteDiscovery
                     ? 'google_places_fallback'
                     : 'google_places',
         ];
+    }
+
+    private function hasUsableWebsiteContext(
+        array $businessProfile
+    ): bool {
+        $websiteUrl = data_get(
+            $businessProfile,
+            'website.url'
+        );
+
+        if (
+            ! is_string($websiteUrl)
+            || trim($websiteUrl) === ''
+        ) {
+            return false;
+        }
+
+        foreach (
+            [
+                'website.title',
+                'website.meta_description',
+                'website.text',
+            ] as $path
+        ) {
+            $value = data_get(
+                $businessProfile,
+                $path
+            );
+
+            if (
+                is_string($value)
+                && trim($value) !== ''
+            ) {
+                return true;
+            }
+        }
+
+        $headings = data_get(
+            $businessProfile,
+            'classification_input.headings',
+            []
+        );
+
+        return
+            is_array($headings)
+            && $headings !== [];
     }
 
     private function discoverDigitalCompetitors(
