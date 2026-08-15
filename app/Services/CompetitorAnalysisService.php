@@ -57,7 +57,7 @@ class CompetitorAnalysisService
             $classification
         );
 
-        $useWebsiteDiscovery = $this->hasUsableWebsiteContext(
+        $useWebsiteDiscovery = $this->hasWebsiteIdentity(
             $businessProfile
         );
 
@@ -159,50 +159,23 @@ class CompetitorAnalysisService
         ];
     }
 
-    private function hasUsableWebsiteContext(
+    private function hasWebsiteIdentity(
         array $businessProfile
     ): bool {
+        /*
+         * The website/domain remains the primary company identity even when
+         * automated homepage scanning is blocked or returns no readable text.
+         * AI discovery can still use the URL together with the supporting
+         * business name/classification before falling back to Google Places.
+         */
         $websiteUrl = data_get(
             $businessProfile,
             'website.url'
         );
 
-        if (
-            ! is_string($websiteUrl)
-            || trim($websiteUrl) === ''
-        ) {
-            return false;
-        }
-
-        foreach (
-            [
-                'website.title',
-                'website.meta_description',
-                'website.text',
-            ] as $path
-        ) {
-            $value = data_get(
-                $businessProfile,
-                $path
-            );
-
-            if (
-                is_string($value)
-                && trim($value) !== ''
-            ) {
-                return true;
-            }
-        }
-
-        $headings = data_get(
-            $businessProfile,
-            'classification_input.headings',
-            []
-        );
-
         return
-            is_array($headings)
-            && $headings !== [];
+            is_string($websiteUrl)
+            && trim($websiteUrl) !== '';
     }
 
     private function discoverDigitalCompetitors(

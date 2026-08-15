@@ -412,6 +412,395 @@ class AnalysisFlowTest extends TestCase
         ]);
     }
 
+    public function test_corporate_website_accepts_related_multi_location_branch_profile(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $websiteScan = [
+            'final_url' => 'https://www.rbc.com/',
+            'status' => 200,
+            'title' => 'About RBC',
+            'meta_description'
+                => 'RBC is one of Canada\'s largest banks.',
+            'h1' => [
+                'About RBC',
+            ],
+            'h2' => [
+                'RBC Royal Bank',
+            ],
+            'text'
+                => 'RBC provides banking and financial services through RBC Royal Bank and other businesses.',
+        ];
+
+        $googlePlace = [
+            'id' => 'rbc-wellington-branch',
+            'displayName' => [
+                'text' => 'RBC Royal Bank',
+                'languageCode' => 'en',
+            ],
+            'formattedAddress'
+                => '155 Wellington St W, Toronto, ON, Canada',
+            'primaryType' => 'bank',
+            'primaryTypeDisplayName' => [
+                'text' => 'Bank',
+                'languageCode' => 'en',
+            ],
+            'types' => [
+                'bank',
+                'finance',
+            ],
+            'location' => [
+                'latitude' => 43.6459,
+                'longitude' => -79.3863,
+            ],
+            'businessStatus' => 'OPERATIONAL',
+            'pureServiceAreaBusiness' => false,
+            'websiteUri'
+                => 'https://maps.rbcroyalbank.com/ON-TORONTO-branch-1116',
+        ];
+
+        $analysisResult = [
+            'business_profile' => [],
+            'classification' => [
+                'vertical' => 'financial_services',
+                'market_scope' => 'broader',
+            ],
+            'search_profile' => [
+                'business_type' => 'Bank',
+            ],
+            'candidate_count' => 5,
+            'top_competitors' => [],
+            'strong_match_count' => 0,
+            'has_competitors' => false,
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with('https://www.rbc.com/')
+            ->andReturn($websiteScan);
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('getPlaceDetails')
+            ->once()
+            ->with(
+                'rbc-wellington-branch',
+                $sessionToken,
+                true
+            )
+            ->andReturn($googlePlace);
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis
+            ->shouldReceive('analyze')
+            ->once()
+            ->with(
+                $websiteScan,
+                $googlePlace
+            )
+            ->andReturn($analysisResult);
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this->post(
+            route('analysis.start'),
+            [
+                'website' => 'https://www.rbc.com/',
+                'google_business' => 'RBC Royal Bank',
+                'google_place_id'
+                    => 'rbc-wellington-branch',
+                'google_places_session_token'
+                    => $sessionToken,
+            ]
+        );
+
+        $response->assertRedirect(
+            route('competitors')
+        );
+
+        $response->assertSessionHasNoErrors();
+        $response->assertSessionHas(
+            'analysis.google_place_id',
+            'rbc-wellington-branch'
+        );
+    }
+
+    public function test_blocked_corporate_website_accepts_exact_branded_branch_locator_profile(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $fallbackWebsiteScan = [
+            'final_url' => 'https://www.rbc.com/',
+            'status' => 403,
+            'title' => null,
+            'meta_description' => null,
+            'h1' => [],
+            'h2' => [],
+            'text' => '',
+            'available' => false,
+        ];
+
+        $googlePlace = [
+            'id' => 'rbc-wellington-blocked-site',
+            'displayName' => [
+                'text' => 'RBC Royal Bank',
+                'languageCode' => 'en',
+            ],
+            'formattedAddress'
+                => '155 Wellington St W, Toronto, ON, Canada',
+            'primaryType' => 'bank',
+            'types' => [
+                'bank',
+                'finance',
+            ],
+            'businessStatus' => 'OPERATIONAL',
+            'pureServiceAreaBusiness' => false,
+            'websiteUri'
+                => 'https://maps.rbcroyalbank.com/ON-TORONTO-branch-1116',
+        ];
+
+        $analysisResult = [
+            'business_profile' => [],
+            'classification' => [
+                'vertical' => 'financial_services',
+                'market_scope' => 'broader',
+            ],
+            'search_profile' => [
+                'business_type' => 'Bank',
+            ],
+            'candidate_count' => 5,
+            'top_competitors' => [],
+            'strong_match_count' => 0,
+            'has_competitors' => false,
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with('https://www.rbc.com/')
+            ->andThrow(
+                new \RuntimeException(
+                    'Website returned HTTP status 403.'
+                )
+            );
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('getPlaceDetails')
+            ->once()
+            ->with(
+                'rbc-wellington-blocked-site',
+                $sessionToken,
+                true
+            )
+            ->andReturn($googlePlace);
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis
+            ->shouldReceive('analyze')
+            ->once()
+            ->with(
+                $fallbackWebsiteScan,
+                $googlePlace
+            )
+            ->andReturn($analysisResult);
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this->post(
+            route('analysis.start'),
+            [
+                'website' => 'https://www.rbc.com/',
+                'google_business' => 'RBC Royal Bank',
+                'google_place_id'
+                    => 'rbc-wellington-blocked-site',
+                'google_places_session_token'
+                    => $sessionToken,
+            ]
+        );
+
+        $response->assertRedirect(
+            route('competitors')
+        );
+
+        $response->assertSessionHasNoErrors();
+        $response->assertSessionHas(
+            'analysis.website_scan',
+            $fallbackWebsiteScan
+        );
+        $response->assertSessionHas(
+            'analysis.google_place_id',
+            'rbc-wellington-blocked-site'
+        );
+    }
+
+    public function test_related_domain_prefix_does_not_allow_unrelated_short_brand_business(): void
+    {
+        $sessionToken =
+            '550e8400-e29b-41d4-a716-446655440000';
+
+        $websiteScan = [
+            'final_url' => 'https://abc.com',
+            'status' => 200,
+            'title' => 'ABC Payments',
+            'meta_description'
+                => 'Online payments infrastructure for businesses.',
+            'h1' => [
+                'Payments for businesses',
+            ],
+            'h2' => [],
+            'text'
+                => 'ABC provides payment processing and financial infrastructure.',
+        ];
+
+        $googlePlace = [
+            'id' => 'abc-yoga-place',
+            'displayName' => [
+                'text' => 'ABC Yoga Studio',
+            ],
+            'primaryType' => 'yoga_studio',
+            'types' => [
+                'yoga_studio',
+                'gym',
+            ],
+            'websiteUri'
+                => 'https://abcyoga.example',
+        ];
+
+        $websiteScanner = Mockery::mock(
+            WebsiteScanner::class
+        );
+
+        $websiteScanner
+            ->shouldReceive('scan')
+            ->once()
+            ->with('https://abc.com')
+            ->andReturn($websiteScan);
+
+        $this->app->instance(
+            WebsiteScanner::class,
+            $websiteScanner
+        );
+
+        $googlePlaces = Mockery::mock(
+            GooglePlacesService::class
+        );
+
+        $googlePlaces
+            ->shouldReceive('isConfigured')
+            ->once()
+            ->andReturn(true);
+
+        $googlePlaces
+            ->shouldReceive('getPlaceDetails')
+            ->once()
+            ->with(
+                'abc-yoga-place',
+                $sessionToken,
+                true
+            )
+            ->andReturn($googlePlace);
+
+        $this->app->instance(
+            GooglePlacesService::class,
+            $googlePlaces
+        );
+
+        $competitorAnalysis = Mockery::mock(
+            CompetitorAnalysisService::class
+        );
+
+        $competitorAnalysis
+            ->shouldNotReceive('analyze');
+
+        $this->app->instance(
+            CompetitorAnalysisService::class,
+            $competitorAnalysis
+        );
+
+        $response = $this
+            ->from(route('home'))
+            ->post(
+                route('analysis.start'),
+                [
+                    'website' => 'https://abc.com',
+                    'google_business'
+                        => 'ABC Yoga Studio',
+                    'google_place_id'
+                        => 'abc-yoga-place',
+                    'google_places_session_token'
+                        => $sessionToken,
+                ]
+            );
+
+        $response->assertRedirect(
+            route('home')
+        );
+
+        $response->assertSessionHasErrors([
+            'google_business',
+        ]);
+    }
+
     public function test_address_only_google_place_is_rejected_before_analysis(): void
     {
         $sessionToken =

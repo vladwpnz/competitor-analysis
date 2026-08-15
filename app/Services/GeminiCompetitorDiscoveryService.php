@@ -407,6 +407,7 @@ class GeminiCompetitorDiscoveryService
             [
                 'You are the direct competitor discovery component of a market-intelligence application.',
                 'The subject website is the primary source of truth for company identity, products and services, business model, target customers, and competitive scope.',
+                'If homepage content is unavailable or blocked, a valid subject website URL/domain is still primary identity evidence. Use that domain together with the supporting business name and classification to identify the overall company, and do not switch to branch-local competitors just because page text is missing.',
                 'Compare company to company and website to website. Identify direct competing companies whose core offering is a realistic substitute for the subject company for similar target customers.',
                 'Use classification fields only as supporting interpretation of the website. A Google Business Profile or branch name may help identify the subject, but it must not make competitor discovery location-first.',
                 'Do not prefer a company merely because it is geographically close to the selected Google Business location.',

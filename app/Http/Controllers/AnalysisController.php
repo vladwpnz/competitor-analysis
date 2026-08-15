@@ -207,6 +207,7 @@ class AnalysisController extends Controller
                 if (
                     ! $this->googleBusinessMatchesWebsite(
                         $validated['website'],
+                        $websiteScan,
                         $googlePlace
                     )
                 ) {
@@ -505,6 +506,7 @@ class AnalysisController extends Controller
 
     private function googleBusinessMatchesWebsite(
         string $website,
+        array $websiteScan,
         array $googlePlace
     ): bool {
         $googleWebsite = data_get(
@@ -534,7 +536,7 @@ class AnalysisController extends Controller
             return true;
         }
 
-        return
+        if (
             $websiteHost === $googleHost
             || str_ends_with(
                 $websiteHost,
@@ -543,7 +545,365 @@ class AnalysisController extends Controller
             || str_ends_with(
                 $googleHost,
                 '.' . $websiteHost
+            )
+        ) {
+            return true;
+        }
+
+        return $this->looksLikeRelatedBrandDomain(
+            $websiteHost,
+            $googleHost,
+            $websiteScan,
+            $googlePlace
+        );
+    }
+
+    private function looksLikeRelatedBrandDomain(
+        string $websiteHost,
+        string $googleHost,
+        array $websiteScan,
+        array $googlePlace
+    ): bool {
+        $websiteBrand = $this->domainBrandLabel(
+            $websiteHost
+        );
+
+        $googleBrand = $this->domainBrandLabel(
+            $googleHost
+        );
+
+        if (
+            $websiteBrand === null
+            || $googleBrand === null
+        ) {
+            return false;
+        }
+
+        $websiteBrandKey = $this->brandKey(
+            $websiteBrand
+        );
+
+        $googleBrandKey = $this->brandKey(
+            $googleBrand
+        );
+
+        if (
+            $websiteBrandKey === ''
+            || $googleBrandKey === ''
+        ) {
+            return false;
+        }
+
+        $googleName = trim(
+            (string) data_get(
+                $googlePlace,
+                'displayName.text',
+                ''
+            )
+        );
+
+        if ($googleName === '') {
+            return false;
+        }
+
+        $googleNameCompact = $this->brandKey(
+            $googleName
+        );
+
+        if (
+            ! str_contains(
+                $googleNameCompact,
+                $websiteBrandKey
+            )
+        ) {
+            return false;
+        }
+
+        /*
+         * Some large multi-location companies use a separate branded
+         * locator domain for branch Google profiles. A corporate site such
+         * as the short parent brand can therefore legitimately differ from
+         * the branch website host. Keep this fallback narrow: the domain
+         * brands must still be clearly related and the branch name must
+         * agree with the identity visible on the corporate website.
+         */
+        if ($websiteBrandKey === $googleBrandKey) {
+            return true;
+        }
+
+        if (
+            ! str_starts_with(
+                $googleBrandKey,
+                $websiteBrandKey
+            )
+            && ! str_starts_with(
+                $websiteBrandKey,
+                $googleBrandKey
+            )
+        ) {
+            return false;
+        }
+
+        /*
+         * Large brands can expose branch Google profiles through a separate
+         * branded locator host even when the corporate homepage is blocked
+         * or cannot provide enough identity text. Example shape:
+         * corporate-brand.com -> maps.corporatebrandservice.com.
+         *
+         * Keep this exception narrow: it only applies to known locator
+         * subdomains and only when the locator domain brand exactly matches
+         * the compact Google Business display name. This avoids turning a
+         * simple shared prefix into a blanket match.
+         */
+        if (
+            $this->isBranchLocatorHost($googleHost)
+            && $googleNameCompact === $googleBrandKey
+        ) {
+            return true;
+        }
+
+        $websiteIdentityTokens =
+            $this->websiteIdentityTokens(
+                $websiteScan
             );
+
+        $googleNameTokens =
+            $this->identityTokens(
+                $googleName
+            );
+
+        $brandTokens =
+            $this->identityTokens(
+                $websiteBrand
+            );
+
+        $googleDescriptorTokens = array_values(
+            array_diff(
+                $googleNameTokens,
+                $brandTokens
+            )
+        );
+
+        if ($googleDescriptorTokens === []) {
+            return false;
+        }
+
+        return array_intersect(
+            $googleDescriptorTokens,
+            $websiteIdentityTokens
+        ) !== [];
+    }
+
+    private function isBranchLocatorHost(
+        string $host
+    ): bool {
+        $labels = explode('.', $host);
+
+        $firstLabel = mb_strtolower(
+            trim((string) ($labels[0] ?? ''))
+        );
+
+        return in_array(
+            $firstLabel,
+            [
+                'branch',
+                'branches',
+                'locations',
+                'locator',
+                'maps',
+            ],
+            true
+        );
+    }
+
+    private function domainBrandLabel(
+        string $host
+    ): ?string {
+        $labels = array_values(
+            array_filter(
+                explode('.', $host),
+                static fn (string $label): bool =>
+                    trim($label) !== ''
+            )
+        );
+
+        if ($labels === []) {
+            return null;
+        }
+
+        $count = count($labels);
+
+        if ($count === 1) {
+            return $labels[0];
+        }
+
+        $index = $count - 2;
+
+        if (
+            $count >= 3
+            && strlen($labels[$count - 1]) === 2
+            && in_array(
+                $labels[$count - 2],
+                [
+                    'ac',
+                    'co',
+                    'com',
+                    'gov',
+                    'net',
+                    'org',
+                ],
+                true
+            )
+        ) {
+            $index = $count - 3;
+        }
+
+        $label = trim(
+            $labels[$index] ?? ''
+        );
+
+        return $label === ''
+            ? null
+            : $label;
+    }
+
+    private function websiteIdentityTokens(
+        array $websiteScan
+    ): array {
+        $parts = [];
+
+        foreach (
+            [
+                'title',
+                'meta_description',
+                'text',
+            ] as $key
+        ) {
+            $value = data_get(
+                $websiteScan,
+                $key
+            );
+
+            if (
+                is_string($value)
+                && trim($value) !== ''
+            ) {
+                $parts[] = mb_substr(
+                    trim($value),
+                    0,
+                    $key === 'text'
+                        ? 3000
+                        : 500
+                );
+            }
+        }
+
+        foreach (['h1', 'h2'] as $key) {
+            $headings = data_get(
+                $websiteScan,
+                $key,
+                []
+            );
+
+            if (! is_array($headings)) {
+                continue;
+            }
+
+            foreach ($headings as $heading) {
+                if (
+                    is_string($heading)
+                    && trim($heading) !== ''
+                ) {
+                    $parts[] = trim($heading);
+                }
+            }
+        }
+
+        return $this->identityTokens(
+            implode(' ', $parts)
+        );
+    }
+
+    private function identityTokens(
+        string $value
+    ): array {
+        $value = mb_strtolower(
+            $value
+        );
+
+        $value = preg_replace(
+            '/[^a-z0-9]+/u',
+            ' ',
+            $value
+        ) ?? $value;
+
+        $stopWords = [
+            'about',
+            'and',
+            'canada',
+            'company',
+            'corp',
+            'corporation',
+            'for',
+            'group',
+            'inc',
+            'limited',
+            'location',
+            'locations',
+            'ltd',
+            'of',
+            'the',
+            'with',
+        ];
+
+        $tokens = preg_split(
+            '/\s+/',
+            trim($value)
+        ) ?: [];
+
+        $normalized = [];
+
+        foreach ($tokens as $token) {
+            $token = trim($token);
+
+            if (
+                strlen($token) < 3
+                || in_array(
+                    $token,
+                    $stopWords,
+                    true
+                )
+            ) {
+                continue;
+            }
+
+            if (
+                strlen($token) > 4
+                && str_ends_with($token, 's')
+            ) {
+                $token = substr(
+                    $token,
+                    0,
+                    -1
+                );
+            }
+
+            $normalized[$token] = true;
+        }
+
+        return array_keys(
+            $normalized
+        );
+    }
+
+    private function brandKey(
+        string $value
+    ): string {
+        return preg_replace(
+            '/[^a-z0-9]+/',
+            '',
+            mb_strtolower($value)
+        ) ?? '';
     }
 
     private function normalizedHost(
