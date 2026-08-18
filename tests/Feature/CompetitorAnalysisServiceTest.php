@@ -761,7 +761,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                             data_get(
                                 $businessProfile,
                                 'website.url'
-                            ) === 'https://www.wainbee.com/'
+                            ) === 'https://northline-industrial.test/'
                             && str_contains(
                                 (string) data_get(
                                     $businessProfile,
@@ -784,32 +784,32 @@ class CompetitorAnalysisServiceTest extends TestCase
             )
             ->andReturn([
                 [
-                    'name' => 'Wajax',
-                    'domain' => 'wajax.com',
+                    'name' => 'Apex Motion Supply',
+                    'domain' => 'apex-motion.test',
                     'reason'
                         => 'Competes in industrial products, automation and engineered solutions.',
                 ],
                 [
-                    'name' => 'Applied Industrial Technologies',
-                    'domain' => 'applied.com',
+                    'name' => 'Vector Fluid Systems',
+                    'domain' => 'vector-fluid.test',
                     'reason'
                         => 'Competes as a broad industrial distributor serving similar customers.',
                 ],
                 [
-                    'name' => 'Motion Industries',
-                    'domain' => 'motion.com',
+                    'name' => 'Precision Motion Supply',
+                    'domain' => 'precision-motion.test',
                     'reason'
                         => 'Competes in industrial distribution, motion and automation products.',
                 ],
                 [
-                    'name' => 'Bosch Rexroth',
-                    'domain' => 'boschrexroth.com',
+                    'name' => 'Orion Automation',
+                    'domain' => 'orion-automation.test',
                     'reason'
                         => 'Competes in motion, control and industrial automation solutions.',
                 ],
                 [
-                    'name' => 'SMC',
-                    'domain' => 'smcworld.com',
+                    'name' => 'Keystone Pneumatics',
+                    'domain' => 'keystone-pneumatics.test',
                     'reason'
                         => 'Competes in industrial automation and pneumatic control solutions.',
                 ],
@@ -846,9 +846,9 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
 
         $googlePlace = [
-            'id' => 'wainbee-mississauga',
+            'id' => 'northline-mississauga',
             'displayName' => [
-                'text' => 'Wainbee Limited',
+                'text' => 'Northline Industrial',
                 'languageCode' => 'en',
             ],
             'formattedAddress'
@@ -871,17 +871,17 @@ class CompetitorAnalysisServiceTest extends TestCase
             'pureServiceAreaBusiness'
                 => false,
             'websiteUri'
-                => 'https://www.wainbee.com/',
+                => 'https://northline-industrial.test/',
         ];
 
         $result = $service->analyze(
             [
                 'final_url'
-                    => 'https://www.wainbee.com/',
+                    => 'https://northline-industrial.test/',
                 'status'
                     => 200,
                 'title'
-                    => 'Wainbee: Industrial Solutions for Engineered Systems in Canada',
+                    => 'Northline Industrial: Engineered Systems in Canada',
                 'meta_description'
                     => 'Industrial automation, motion, control and filtration solutions.',
                 'h1' => [
@@ -893,7 +893,7 @@ class CompetitorAnalysisServiceTest extends TestCase
                     'Filtration',
                 ],
                 'text'
-                    => 'Wainbee provides industrial automation, fluid power, motion control and filtration solutions across Canada.',
+                    => 'Northline Industrial provides industrial automation, fluid power, motion control and filtration solutions across Canada.',
             ],
             $googlePlace
         );
@@ -922,7 +922,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
 
         $this->assertSame(
-            'Wajax',
+            'Apex Motion Supply',
             data_get(
                 $result,
                 'top_competitors.0.displayName.text'
@@ -930,7 +930,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
 
         $this->assertSame(
-            'https://wajax.com',
+            'https://apex-motion.test',
             data_get(
                 $result,
                 'top_competitors.0.websiteUri'

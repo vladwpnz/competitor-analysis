@@ -3,7 +3,6 @@
 use App\Http\Controllers\AnalysisController;
 use App\Http\Controllers\CompetitorSelectionController;
 use App\Http\Controllers\GoogleBusinessController;
-use App\Http\Controllers\PreviewController;
 use Illuminate\Support\Facades\Route;
 
 Route::get(
@@ -25,7 +24,6 @@ Route::get(
     '/competitors',
     [AnalysisController::class, 'competitors']
 )->name('competitors');
-
 
 Route::get(
     '/competitors/search',
@@ -51,8 +49,3 @@ Route::post(
     '/analysis/email',
     [CompetitorSelectionController::class, 'storeEmail']
 )->name('analysis.email.store');
-
-Route::get(
-    '/preview',
-    [PreviewController::class, 'competitors']
-)->name('preview.competitors');

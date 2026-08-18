@@ -12,9 +12,9 @@ use Tests\TestCase;
 
 class BusinessIntelligenceServiceTest extends TestCase
 {
-    public function test_ai_classifies_wainbee_like_business_as_distributor_and_overrides_search_intent(): void
+    public function test_ai_classifies_industrial_business_as_distributor_and_overrides_search_intent(): void
     {
-        $profile = $this->wainbeeLikeProfile();
+        $profile = $this->industrialDistributorProfile();
 
         $service = $this->serviceWithAiResult(
             $this->industrialDistributorAiResult()
@@ -572,7 +572,7 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $classification = $service->classify(
-            $this->wainbeeLikeProfile()
+            $this->industrialDistributorProfile()
         );
 
         $this->assertSame(
@@ -588,7 +588,7 @@ class BusinessIntelligenceServiceTest extends TestCase
 
     public function test_unconfigured_ai_returns_exact_heuristic_fallback(): void
     {
-        $profile = $this->wainbeeLikeProfile();
+        $profile = $this->industrialDistributorProfile();
 
         $fallback = app(
             BusinessClassifier::class
@@ -627,7 +627,7 @@ class BusinessIntelligenceServiceTest extends TestCase
 
     public function test_api_failure_returns_exact_heuristic_fallback(): void
     {
-        $profile = $this->wainbeeLikeProfile();
+        $profile = $this->industrialDistributorProfile();
 
         $fallback = app(
             BusinessClassifier::class
@@ -681,7 +681,7 @@ class BusinessIntelligenceServiceTest extends TestCase
 
     public function test_invalid_ai_payload_returns_exact_heuristic_fallback(): void
     {
-        $profile = $this->wainbeeLikeProfile();
+        $profile = $this->industrialDistributorProfile();
 
         $fallback = app(
             BusinessClassifier::class
@@ -720,7 +720,7 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $classification = $service->classify(
-            $this->wainbeeLikeProfile()
+            $this->industrialDistributorProfile()
         );
 
         $this->assertCount(
@@ -743,7 +743,7 @@ class BusinessIntelligenceServiceTest extends TestCase
         $fallbackClassification = app(
             BusinessClassifier::class
         )->classify(
-            $this->wainbeeLikeProfile()
+            $this->industrialDistributorProfile()
         );
 
         $manager = Mockery::mock(
@@ -946,7 +946,7 @@ class BusinessIntelligenceServiceTest extends TestCase
         ];
     }
 
-    private function wainbeeLikeProfile(): array
+    private function industrialDistributorProfile(): array
     {
         return [
             'classification_input' => [

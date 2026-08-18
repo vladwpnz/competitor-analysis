@@ -1,9 +1,15 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "vladwpnz/competitor-intelligence",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "A Laravel application for AI-assisted competitor discovery and relevance ranking.",
+    "keywords": [
+        "competitor-intelligence",
+        "market-intelligence",
+        "laravel",
+        "gemini",
+        "google-places"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.2",

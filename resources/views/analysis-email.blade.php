@@ -1,30 +1,28 @@
 @extends('layouts.app')
 
-@section('title', 'Get Your Free Competitor Analysis')
+@section('title', 'Save analysis details')
+@section('meta_description', 'Save a contact email with the competitor shortlist kept in the current analysis session.')
 
 @section('content')
 
 <header class="site-header">
     <div class="container header-inner">
-        <a href="{{ route('home') }}" class="brand" aria-label="Intellytics home">
-            <span class="intellytics-mark" aria-hidden="true">
+        <a href="{{ route('home') }}" class="brand" aria-label="Competitor Intelligence home">
+            <span class="brand-mark" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
             </span>
-            <span class="brand-name">Intellytics</span>
+            <span class="brand-name">Competitor Intelligence</span>
         </a>
 
         <nav class="main-nav" aria-label="Primary navigation">
-            <a href="#">Platform <span class="nav-chevron">⌄</span></a>
-            <a href="#">Solutions <span class="nav-chevron">⌄</span></a>
-            <a href="#">Resources <span class="nav-chevron">⌄</span></a>
-            <a href="#">Pricing</a>
-            <a href="#">Company <span class="nav-chevron">⌄</span></a>
+            <a href="{{ route('home') }}#analysis-form">Analyze</a>
+            <a href="{{ route('home') }}#how-it-works">How it works</a>
+            <a href="{{ route('home') }}#capabilities">Capabilities</a>
         </nav>
 
         <div class="header-actions">
-            <a href="#" class="login-link">Log in</a>
-            <a href="{{ route('home') }}#analysis-form" class="trial-button">
-                Start Free Trial
+            <a href="{{ route('home') }}#analysis-form" class="header-cta">
+                New analysis
             </a>
         </div>
     </div>
@@ -47,7 +45,7 @@
                     </p>
 
                     <div class="step3-summary">
-                        <span>Report email</span>
+                        <span>Contact email</span>
                         <strong>{{ $email }}</strong>
                     </div>
 
@@ -58,12 +56,12 @@
             @else
                 <div class="step3-heading">
                     <h1>
-                        Where Should We Send
-                        <strong>Your Free Report?</strong>
+                        Save a Contact for
+                        <strong>This Analysis.</strong>
                     </h1>
                     <p>
-                        Your competitor list is ready. Enter your email to continue
-                        with your free analysis.
+                        Your competitor list is ready. Add an email address to keep
+                        with the current analysis session.
                     </p>
                 </div>
 
@@ -108,12 +106,12 @@
                         @enderror
 
                         <button type="submit">
-                            <span>Get My Free Report</span>
+                            <span>Save Email</span>
                             <span aria-hidden="true">→</span>
                         </button>
 
                         <div class="step3-trust">
-                            <span>🔒 No credit card required</span>
+                            <span>🔒 No account required</span>
                             <span>✓ Your competitor list is saved</span>
                         </div>
                     </form>
@@ -131,51 +129,44 @@
     <div class="container footer-grid">
         <div class="footer-brand-column">
             <a href="{{ route('home') }}" class="brand footer-brand">
-                <span class="intellytics-mark" aria-hidden="true">
+                <span class="brand-mark" aria-hidden="true">
                     <i></i><i></i><i></i><i></i>
                 </span>
-                <span class="brand-name">Intellytics</span>
+                <span class="brand-name">Competitor Intelligence</span>
             </a>
 
             <p>
-                AI-powered market intelligence that helps you see what others miss
-                and act with confidence.
+                AI-assisted competitor discovery with deterministic fallbacks,
+                relevance scoring, and manual review.
             </p>
         </div>
 
         <div class="footer-column">
-            <h3>Platform</h3>
-            <a href="#">Features</a>
-            <a href="#">How It Works</a>
-            <a href="#">Integrations</a>
+            <h3>Product</h3>
+            <a href="{{ route('home') }}#analysis-form">Analyze</a>
+            <a href="{{ route('home') }}#how-it-works">How it works</a>
+            <a href="{{ route('home') }}#capabilities">Capabilities</a>
         </div>
 
         <div class="footer-column">
-            <h3>Solutions</h3>
-            <a href="#">For Marketing Teams</a>
-            <a href="#">For Agencies</a>
-            <a href="#">For Enterprises</a>
+            <h3>Discovery</h3>
+            <a href="{{ route('home') }}#capabilities">Website scanning</a>
+            <a href="{{ route('home') }}#capabilities">Google Places</a>
+            <a href="{{ route('home') }}#capabilities">AI classification</a>
         </div>
 
         <div class="footer-column">
-            <h3>Resources</h3>
-            <a href="#">Blog</a>
-            <a href="#">Case Studies</a>
-            <a href="#">Help Center</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Company</h3>
-            <a href="#">About Us</a>
-            <a href="#">Contact Us</a>
+            <h3>Quality</h3>
+            <a href="{{ route('home') }}#capabilities">Relevance scoring</a>
+            <a href="{{ route('home') }}#capabilities">Duplicate filtering</a>
+            <a href="{{ route('home') }}#capabilities">Manual refinement</a>
         </div>
     </div>
 
     <div class="container footer-bottom">
-        <span>© 2025 Intellytics Inc. All rights reserved.</span>
+        <span>© {{ now()->year }} Competitor Intelligence.</span>
         <div>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <span>Independent portfolio project</span>
         </div>
     </div>
 </footer>

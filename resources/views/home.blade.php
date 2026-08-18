@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'AI-Powered Competitor Analysis')
+@section('title', 'AI-assisted competitor discovery')
+@section('meta_description', 'Build a ranked competitor shortlist from website signals, Google Business data, AI classification, and deterministic fallback logic.')
 
 @section('content')
 
@@ -56,24 +57,21 @@
 
 <header class="site-header">
     <div class="container header-inner">
-        <a href="{{ route('home') }}" class="brand" aria-label="Intellytics home">
-            <span class="intellytics-mark" aria-hidden="true">
+        <a href="{{ route('home') }}" class="brand" aria-label="Competitor Intelligence home">
+            <span class="brand-mark" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
             </span>
-            <span class="brand-name">Intellytics</span>
+            <span class="brand-name">Competitor Intelligence</span>
         </a>
 
         <nav class="main-nav" aria-label="Primary navigation">
-            <a href="#">Platform <span class="nav-chevron">⌄</span></a>
-            <a href="#">Solutions <span class="nav-chevron">⌄</span></a>
-            <a href="#">Resources <span class="nav-chevron">⌄</span></a>
-            <a href="#">Pricing</a>
-            <a href="#">Company <span class="nav-chevron">⌄</span></a>
+            <a href="#analysis-form">Analyze</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="#capabilities">Capabilities</a>
         </nav>
 
         <div class="header-actions">
-            <a href="#" class="login-link">Log in</a>
-            <a href="#analysis-form" class="trial-button">Start Free Trial</a>
+            <a href="#analysis-form" class="header-cta">Start analysis</a>
         </div>
     </div>
 </header>
@@ -87,18 +85,18 @@
             <div class="hero-copy">
                 <div class="eyebrow">
                     <span class="eyebrow-spark">✦</span>
-                    AI-POWERED MARKET INTELLIGENCE
+                    AI-ASSISTED COMPETITOR INTELLIGENCE
                 </div>
 
                 <h1>
-                    Know What Changed
-                    <span>Before Your Next Meeting.</span>
+                    Find the Competitors
+                    <span>That Actually Matter.</span>
                 </h1>
 
                 <p class="hero-description">
-                    Track your competitors, industry and market so you can
+                    Combine website signals, Google Business data, and market context to
                     <br class="desktop-break">
-                    make smarter decisions and stay ahead.
+                    build a relevant, ranked competitor shortlist.
                 </p>
 
                 <form
@@ -151,9 +149,9 @@
                             @enderror
 
                             <div class="field-benefits" aria-label="Website analysis benefits">
-                                <span>✓ Track website changes</span>
-                                <span>✓ Monitor new content</span>
-                                <span>✓ Spot strategy shifts</span>
+                                <span>✓ Extract business signals</span>
+                                <span>✓ Identify services and positioning</span>
+                                <span>✓ Handle blocked sites safely</span>
                             </div>
                         </div>
 
@@ -238,42 +236,41 @@
                             @enderror
 
                             <div class="field-benefits" aria-label="Google Business analysis benefits">
-                                <span>✓ Track updates &amp; posts</span>
-                                <span>✓ Monitor reviews</span>
-                                <span>✓ Analyze engagement</span>
+                                <span>✓ Confirm business identity</span>
+                                <span>✓ Add geographic context</span>
+                                <span>✓ Improve local relevance</span>
                             </div>
                         </div>
                     </div>
 
                     <button type="submit" class="analysis-button">
-                        <span>Start My Free Analysis</span>
+                        <span>Analyze Competitors</span>
                         <span class="button-arrow">→</span>
                     </button>
 
                     <div class="analysis-trust">
-                        <span><b>▣</b> No credit card required</span>
-                        <span><b>⊙</b> Get results in 30 seconds</span>
-                        <span><b>⊙</b> Cancel anytime</span>
+                        <span><b>▣</b> No account required</span>
+                        <span><b>⊙</b> Graceful API fallbacks</span>
+                        <span><b>⊙</b> Review every match</span>
                     </div>
                 </form>
             </div>
         </div>
     </section>
 
-    <section class="demo-section">
+    <section class="demo-section" id="how-it-works">
         <div class="container">
             <div class="demo-panel">
                 <div class="demo-copy">
-                    <span class="section-label">See Intellytics In Action</span>
-                    <h2>Understand Your Market.<br>Make Better Decisions.</h2>
+                    <span class="section-label">HOW THE ANALYSIS WORKS</span>
+                    <h2>From Business Signals<br>to a Ranked Shortlist.</h2>
                     <p>
-                        Watch a quick 90-second overview to see how Intellytics
-                        monitors your competitors and delivers AI-powered insights
-                        that give you an edge.
+                        The application scans the website, validates the selected
+                        business profile, classifies the market, and ranks the most
+                        relevant competitor candidates.
                     </p>
-                    <a href="#" class="primary-small-button">
-                        <span class="play-mini">▷</span>
-                        Watch 90-Second Demo
+                    <a href="#analysis-form" class="primary-small-button">
+                        Start an analysis
                     </a>
                 </div>
 
@@ -285,17 +282,17 @@
 
                     <div class="dashboard-content">
                         <div class="dashboard-topbar">
-                            <strong>Dashboard</strong>
+                            <strong>Analysis</strong>
                             <div>
-                                <span>All Competitors⌄</span>
-                                <span>Last 7 days⌄</span>
+                                <span>Ranked competitors</span>
+                                <span>Top matches</span>
                             </div>
                         </div>
 
                         <div class="dashboard-grid">
                             <div class="chart-card">
-                                <div class="tiny-title">Changes Over Time</div>
-                                <svg viewBox="0 0 260 100" role="img" aria-label="Changes over time chart">
+                                <div class="tiny-title">Relevance scores</div>
+                                <svg viewBox="0 0 260 100" role="img" aria-label="Competitor relevance score chart">
                                     <polyline
                                         points="5,78 45,58 83,72 122,42 160,55 202,27 250,42"
                                         fill="none"
@@ -311,25 +308,24 @@
                             </div>
 
                             <div class="impact-card">
-                                <div class="tiny-title">Change Impact</div>
+                                <div class="tiny-title">Shortlist</div>
                                 <div class="impact-row">
-                                    <strong>42</strong>
+                                    <strong>5</strong>
                                     <span class="donut"></span>
                                 </div>
-                                <small>Total company changes</small>
+                                <small>ranked competitors</small>
                             </div>
                         </div>
 
                         <div class="recent-changes">
-                            <div class="tiny-title">Recent Changes</div>
-                            <div><span class="change-icon purple">▣</span> New landing page detected <b>High</b></div>
-                            <div><span class="change-icon green">▣</span> 2 new Google Ads detected <b>Medium</b></div>
-                            <div><span class="change-icon orange">▣</span> Competitor pricing update <b>High</b></div>
-                            <div><span class="change-icon blue">▣</span> 2 new LinkedIn posts <b>Low</b></div>
+                            <div class="tiny-title">Analysis stages</div>
+                            <div><span class="change-icon purple">▣</span> Website profile extracted <b>Ready</b></div>
+                            <div><span class="change-icon green">▣</span> Business profile matched <b>Ready</b></div>
+                            <div><span class="change-icon orange">▣</span> Market scope classified <b>Ready</b></div>
+                            <div><span class="change-icon blue">▣</span> Duplicates and own business removed <b>Ready</b></div>
                         </div>
                     </div>
 
-                    <span class="dashboard-play" aria-hidden="true">▶</span>
                 </div>
             </div>
         </div>
@@ -337,82 +333,82 @@
 
     <section class="trusted-section">
         <div class="container">
-            <p>Trusted by marketing teams at innovative companies</p>
-            <div class="trusted-logos" aria-label="Trusted companies">
-                <span><b>◉</b> ATS<br><small>Life Sciences</small></span>
-                <span class="rexroth">rexroth<br><small>A Bosch Company</small></span>
-                <span class="abb">ABB</span>
-                <span>SIEMENS</span>
-                <span>FANUC</span>
-                <span>Schneider<br><small>Electric</small></span>
-                <span><b>RA</b> Rockwell<br><small>Automation</small></span>
+            <p>Analysis sources and decision layers</p>
+            <div class="trusted-logos" aria-label="Analysis sources and decision layers">
+                <span>Website<br><small>signals</small></span>
+                <span>Google<br><small>Places</small></span>
+                <span>Gemini<br><small>classification</small></span>
+                <span>Deterministic<br><small>fallback</small></span>
+                <span>Relevance<br><small>scoring</small></span>
+                <span>Duplicate<br><small>filtering</small></span>
+                <span>Manual<br><small>review</small></span>
             </div>
         </div>
     </section>
 
-    <section class="features-section">
+    <section class="features-section" id="capabilities">
         <div class="container">
-            <h2 class="center-section-title">Everything You Need. Nothing You Don’t.</h2>
+            <h2 class="center-section-title">A Focused Competitor Discovery Pipeline.</h2>
 
             <div class="feature-grid">
                 <article class="feature-card">
                     <span class="feature-icon purple-icon">▣</span>
-                    <h3>Website Intelligence</h3>
-                    <p>Track changes to pages, content, pricing and landing pages.</p>
+                    <h3>Website scanning</h3>
+                    <p>Extract titles, descriptions, headings, and readable page content.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon green-icon">⌁</span>
-                    <h3>Ads &amp; Campaigns</h3>
-                    <p>Monitor Google, Meta, LinkedIn and YouTube ads in real time.</p>
+                    <h3>Business matching</h3>
+                    <p>Validate that the selected Google Business Profile belongs to the website.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon orange-icon">★</span>
-                    <h3>Reviews &amp; Ratings</h3>
-                    <p>Track review growth, ratings and feedback across all your locations.</p>
+                    <h3>AI classification</h3>
+                    <p>Use Gemini to identify the operating model, market scope, and search intent.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon red-icon">▣</span>
-                    <h3>Social Intelligence</h3>
-                    <p>Monitor LinkedIn, Facebook, X, Instagram and more for posts and engagement.</p>
+                    <h3>Deterministic fallback</h3>
+                    <p>Continue with rule-based classification when AI is unavailable or unconfigured.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon blue-icon">▰</span>
-                    <h3>Google Business</h3>
-                    <p>Monitor profile updates, photos, Q&amp;A, services, reviews and more.</p>
+                    <h3>Market-aware discovery</h3>
+                    <p>Handle local, hybrid, and broader markets with the right geographic context.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon blue-icon">∞</span>
-                    <h3>Meta Ads Monitoring</h3>
-                    <p>Track new creatives, offers and messaging in targeting.</p>
+                    <h3>Staged search</h3>
+                    <p>Expand discovery only when the initial candidate pool lacks strong matches.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon green-icon">▤</span>
-                    <h3>News &amp; Mentions</h3>
-                    <p>Stay informed on press releases, news and mentions about your competitors.</p>
+                    <h3>Relevance scoring</h3>
+                    <p>Rank candidates using business type, services, query evidence, and distance.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon purple-icon">✦</span>
-                    <h3>AI Executive Briefing</h3>
-                    <p>Get a clear weekly summary with insights and recommended actions.</p>
+                    <h3>Duplicate filtering</h3>
+                    <p>Collapse duplicate locations and repeated records into distinct companies.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon red-icon">▧</span>
-                    <h3>Reports &amp; Exports</h3>
-                    <p>Create beautiful reports and share with your team or clients.</p>
+                    <h3>Own-business exclusion</h3>
+                    <p>Remove the subject business and related locations from competitor results.</p>
                 </article>
 
                 <article class="feature-card">
                     <span class="feature-icon purple-icon">♙</span>
-                    <h3>Team Collaboration</h3>
-                    <p>Built for teams to share insights and make better decisions together.</p>
+                    <h3>Manual refinement</h3>
+                    <p>Add or remove competitors while preserving the curated list in the session.</p>
                 </article>
             </div>
         </div>
@@ -428,17 +424,17 @@
 
                 <div class="dashboard-content">
                     <div class="dashboard-topbar">
-                        <strong>Dashboard</strong>
+                        <strong>Analysis</strong>
                         <div>
-                            <span>All Competitors⌄</span>
-                            <span>Last 7 days⌄</span>
+                            <span>Ranked competitors</span>
+                            <span>Top matches</span>
                         </div>
                     </div>
 
                     <div class="dashboard-grid">
                         <div class="chart-card">
-                            <div class="tiny-title">Changes Over Time</div>
-                            <svg viewBox="0 0 260 100" role="img" aria-label="Changes over time chart">
+                            <div class="tiny-title">Relevance scores</div>
+                            <svg viewBox="0 0 260 100" role="img" aria-label="Competitor relevance score chart">
                                 <polyline
                                     points="5,78 45,58 83,72 122,42 160,55 202,27 250,42"
                                     fill="none"
@@ -454,86 +450,87 @@
                         </div>
 
                         <div class="impact-card">
-                            <div class="tiny-title">Change Impact</div>
+                            <div class="tiny-title">Shortlist</div>
                             <div class="impact-row">
-                                <strong>42</strong>
+                                <strong>5</strong>
                                 <span class="donut"></span>
                             </div>
-                            <small>Total company changes</small>
+                            <small>ranked competitors</small>
                         </div>
                     </div>
 
                     <div class="recent-changes">
-                        <div class="tiny-title">Recent Changes</div>
-                        <div><span class="change-icon purple">▣</span> New landing page detected <b>High</b></div>
-                        <div><span class="change-icon green">▣</span> 2 new Google Ads detected <b>Medium</b></div>
-                        <div><span class="change-icon orange">▣</span> Competitor pricing update <b>High</b></div>
-                        <div><span class="change-icon blue">▣</span> 2 new LinkedIn posts <b>Low</b></div>
+                        <div class="tiny-title">Ranking evidence</div>
+                        <div><span class="change-icon purple">▣</span> Business type compatibility <b>Strong</b></div>
+                        <div><span class="change-icon green">▣</span> Service keyword overlap <b>Strong</b></div>
+                        <div><span class="change-icon orange">▣</span> Search query evidence <b>Matched</b></div>
+                        <div><span class="change-icon blue">▣</span> Geographic relevance <b>Matched</b></div>
                     </div>
                 </div>
             </div>
 
             <div class="morning-copy">
-                <span class="section-label">MONDAY MORNING INTELLIGENCE</span>
+                <span class="section-label">RESILIENT BY DESIGN</span>
                 <h2>
-                    Monday Morning Shouldn’t<br>
-                    Start With Research.<br>
-                    <span>Start With Answers.</span>
+                    Useful Results Shouldn’t<br>
+                    Depend on One API.<br>
+                    <span>Fallbacks Keep the Flow Moving.</span>
                 </h2>
                 <p>
-                    Get a clear, AI-powered briefing of what changed in your
-                    market — so you can make better decisions, faster.
+                    AI improves classification and discovery, while deterministic
+                    rules and staged search preserve a useful path when external
+                    services are unavailable.
                 </p>
                 <ul class="check-list">
-                    <li>Save hours every week</li>
-                    <li>Make better strategic decisions</li>
-                    <li>Spot opportunities before your competitors</li>
-                    <li>Stay informed with automated monitoring</li>
+                    <li>Classify with Gemini when configured</li>
+                    <li>Fall back to deterministic business rules</li>
+                    <li>Continue from Google data when a website blocks scanning</li>
+                    <li>Return clear errors for unsafe or invalid URLs</li>
                 </ul>
-                <a href="#" class="primary-small-button">See It In Action</a>
+                <a href="#analysis-form" class="primary-small-button">Try the analysis flow</a>
             </div>
         </div>
     </section>
 
     <section class="always-on-section">
         <div class="container">
-            <h2 class="center-section-title">Your Competitors Never Stop. Neither Do We.</h2>
+            <h2 class="center-section-title">Signals Considered at Every Stage.</h2>
 
             <div class="monitor-grid">
-                <div class="monitor-item"><span>▣</span><b>Website<br>Changes</b></div>
-                <div class="monitor-item"><span>★</span><b>Google<br>Reviews</b></div>
-                <div class="monitor-item"><span>▰</span><b>Google<br>Business</b></div>
-                <div class="monitor-item"><span>⌁</span><b>Google<br>Ads</b></div>
-                <div class="monitor-item"><span>∞</span><b>Meta<br>Ads</b></div>
-                <div class="monitor-item"><span>in</span><b>LinkedIn<br>Updates</b></div>
-                <div class="monitor-item"><span>f</span><b>Facebook<br>Updates</b></div>
-                <div class="monitor-item"><span>◎</span><b>Instagram<br>Content</b></div>
-                <div class="monitor-item"><span>▤</span><b>News &amp;<br>Mentions</b></div>
-                <div class="monitor-item"><span>✦</span><b>AI<br>Analysis</b></div>
+                <div class="monitor-item"><span>▣</span><b>Website<br>Content</b></div>
+                <div class="monitor-item"><span>★</span><b>Google<br>Profile</b></div>
+                <div class="monitor-item"><span>▰</span><b>Business<br>Type</b></div>
+                <div class="monitor-item"><span>⌁</span><b>Market<br>Scope</b></div>
+                <div class="monitor-item"><span>∞</span><b>Service<br>Keywords</b></div>
+                <div class="monitor-item"><span>◎</span><b>Search<br>Evidence</b></div>
+                <div class="monitor-item"><span>◷</span><b>Travel<br>Distance</b></div>
+                <div class="monitor-item"><span>◇</span><b>Brand<br>Identity</b></div>
+                <div class="monitor-item"><span>▤</span><b>Candidate<br>Quality</b></div>
+                <div class="monitor-item"><span>✦</span><b>AI<br>Discovery</b></div>
             </div>
 
-            <p class="always-on-caption">24 hours a day. 7 days a week. 365 days a year.</p>
+            <p class="always-on-caption">Signals are normalized before candidates are scored and ranked.</p>
 
             <div class="benefit-grid">
                 <article>
                     <span class="benefit-icon">◷</span>
-                    <h3>Save Time</h3>
-                    <p>Automate time-consuming research and monitoring.</p>
+                    <h3>Relevant by default</h3>
+                    <p>Type, service, and query evidence outweigh a simple nearest-business search.</p>
                 </article>
                 <article>
                     <span class="benefit-icon">▥</span>
-                    <h3>Make Better Decisions</h3>
-                    <p>Understand what changed and why it matters.</p>
+                    <h3>Market-aware</h3>
+                    <p>Local businesses keep distance context while broader markets avoid local bias.</p>
                 </article>
                 <article>
                     <span class="benefit-icon">◎</span>
-                    <h3>Stay Ahead</h3>
-                    <p>Know about new campaigns and changes before your competitors gain traction.</p>
+                    <h3>Failure-tolerant</h3>
+                    <p>External API failures degrade gracefully instead of replacing the analysis with mock data.</p>
                 </article>
                 <article>
                     <span class="benefit-icon">♙</span>
-                    <h3>Built for Teams</h3>
-                    <p>Share insights across your team and make smarter strategic decisions together.</p>
+                    <h3>Human-controlled</h3>
+                    <p>Review the shortlist, remove weak matches, and add competitors manually.</p>
                 </article>
             </div>
         </div>
@@ -541,39 +538,39 @@
 
     <section class="proof-section">
         <div class="container">
-            <h2 class="center-section-title proof-title">Loved by teams who want to stay ahead</h2>
+            <h2 class="center-section-title proof-title">Built for Inspectable Results.</h2>
 
             <div class="testimonial-grid">
                 <article class="testimonial-card">
-                    <p>“Intellytics gives me a competitive edge every single week. I walk into every meeting better prepared.”</p>
+                    <p>Each ranked candidate keeps the evidence used to assess relevance.</p>
                     <div class="testimonial-person">
-                        <span class="avatar avatar-sarah">SJ</span>
-                        <div><b>Sarah Johnson</b><small>Marketing Director, ProMach</small></div>
+                        <span class="avatar avatar-sarah">01</span>
+                        <div><b>Transparent ranking</b><small>Scores, matches, and search modes</small></div>
                     </div>
                 </article>
 
                 <article class="testimonial-card">
-                    <p>“The weekly briefing is a game changer. It’s like having an analyst on our team without the cost.”</p>
+                    <p>The pipeline keeps distinct paths for local and broader competitor discovery.</p>
                     <div class="testimonial-person">
-                        <span class="avatar avatar-michael">MC</span>
-                        <div><b>Michael Chen</b><small>VP Marketing, CloudCoach</small></div>
+                        <span class="avatar avatar-michael">02</span>
+                        <div><b>Scope-aware search</b><small>Geographic or semantic discovery</small></div>
                     </div>
                 </article>
 
                 <article class="testimonial-card">
-                    <p>“We reduced manual research by 80%. Now we focus on strategy, not data collection.”</p>
+                    <p>Manual selection remains available after automated ranking completes.</p>
                     <div class="testimonial-person">
-                        <span class="avatar avatar-emily">ER</span>
-                        <div><b>Emily Roberts</b><small>Head of Growth, Bluewater</small></div>
+                        <span class="avatar avatar-emily">03</span>
+                        <div><b>Curated shortlist</b><small>Add, remove, and retain selections</small></div>
                     </div>
                 </article>
             </div>
 
             <div class="stats-bar">
-                <div><strong>10,000+</strong><span>Businesses monitored</span></div>
-                <div><strong>1.2M+</strong><span>Changes detected</span></div>
-                <div><strong>95%</strong><span>Time saved every week</span></div>
-                <div><strong>4.9/5 <em>★★★★★</em></strong><span>Customer rating</span></div>
+                <div><strong>4</strong><span>maximum search queries</span></div>
+                <div><strong>5</strong><span>top ranked matches</span></div>
+                <div><strong>20</strong><span>selection limit</span></div>
+                <div><strong>2</strong><span>classification paths</span></div>
             </div>
         </div>
     </section>
@@ -585,13 +582,13 @@
             </div>
 
             <div class="cta-copy">
-                <h2>Never miss another important change</h2>
-                <p>Start your free 14-day trial and get your first executive briefing in minutes.</p>
+                <h2>Build a competitor shortlist you can review</h2>
+                <p>Start with a website and the matching Google Business Profile.</p>
             </div>
 
             <a href="#analysis-form" class="cta-button">
-                Start Free 14-Day Trial
-                <small>No credit card required</small>
+                Start an Analysis
+                <small>No account required</small>
             </a>
         </div>
     </section>
@@ -601,65 +598,44 @@
     <div class="container footer-grid">
         <div class="footer-brand-column">
             <a href="{{ route('home') }}" class="brand footer-brand">
-                <span class="intellytics-mark" aria-hidden="true">
+                <span class="brand-mark" aria-hidden="true">
                     <i></i><i></i><i></i><i></i>
                 </span>
-                <span class="brand-name">Intellytics</span>
+                <span class="brand-name">Competitor Intelligence</span>
             </a>
 
             <p>
-                AI market intelligence that helps you see what others miss
-                and act with confidence.
+                AI-assisted competitor discovery with deterministic fallbacks,
+                relevance scoring, and manual review.
             </p>
-
-            <div class="social-links">
-                <a href="#" aria-label="LinkedIn">in</a>
-                <a href="#" aria-label="X">𝕏</a>
-                <a href="#" aria-label="YouTube">▶</a>
-                <a href="#" aria-label="Facebook">f</a>
-            </div>
         </div>
 
         <div class="footer-column">
-            <h3>Platform</h3>
-            <a href="#">Features</a>
-            <a href="#">How It Works</a>
-            <a href="#">AI Briefings</a>
-            <a href="#">Integrations</a>
-            <a href="#">Status</a>
+            <h3>Product</h3>
+            <a href="#analysis-form">Analyze</a>
+            <a href="#how-it-works">How it works</a>
+            <a href="#capabilities">Capabilities</a>
         </div>
 
         <div class="footer-column">
-            <h3>Solutions</h3>
-            <a href="#">For Marketing Teams</a>
-            <a href="#">For Agencies</a>
-            <a href="#">For Enterprises</a>
-            <a href="#">By Industry</a>
+            <h3>Discovery</h3>
+            <a href="#capabilities">Website scanning</a>
+            <a href="#capabilities">Google Places</a>
+            <a href="#capabilities">AI classification</a>
         </div>
 
         <div class="footer-column">
-            <h3>Resources</h3>
-            <a href="#">Blog</a>
-            <a href="#">Case Studies</a>
-            <a href="#">Guides &amp; Templates</a>
-            <a href="#">Help Center</a>
-            <a href="#">Webinars</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Company</h3>
-            <a href="#">About Us</a>
-            <a href="#">Careers</a>
-            <a href="#">Partners</a>
-            <a href="#">Contact Us</a>
+            <h3>Quality</h3>
+            <a href="#capabilities">Relevance scoring</a>
+            <a href="#capabilities">Duplicate filtering</a>
+            <a href="#capabilities">Manual refinement</a>
         </div>
     </div>
 
     <div class="container footer-bottom">
-        <span>© 2025 Intellytics Inc. All rights reserved.</span>
+        <span>© {{ now()->year }} Competitor Intelligence.</span>
         <div>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <span>Independent portfolio project</span>
         </div>
     </div>
 </footer>

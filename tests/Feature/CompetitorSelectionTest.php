@@ -606,7 +606,7 @@ class CompetitorSelectionTest extends TestCase
             ]);
     }
 
-    public function test_step_three_collects_and_saves_report_email(): void
+    public function test_step_three_collects_and_saves_analysis_email(): void
     {
         $session = $this->analysisSession([
             $this->place(
@@ -627,7 +627,7 @@ class CompetitorSelectionTest extends TestCase
                 'STEP 3 OF 3'
             )
             ->assertSee(
-                'Get My Free Report'
+                'Save Email'
             )
             ->assertSee(
                 'Customer Plumbing',

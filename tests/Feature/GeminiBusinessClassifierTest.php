@@ -90,7 +90,7 @@ class GeminiBusinessClassifierTest extends TestCase
         $result = app(
             GeminiBusinessClassifier::class
         )->classify(
-            $this->wainbeeLikeProfile()
+            $this->industrialDistributorProfile()
         );
 
         $this->assertSame(
@@ -217,7 +217,7 @@ class GeminiBusinessClassifierTest extends TestCase
         app(
             GeminiBusinessClassifier::class
         )->classify(
-            $this->wainbeeLikeProfile()
+            $this->industrialDistributorProfile()
         );
     }
 
@@ -244,7 +244,7 @@ class GeminiBusinessClassifierTest extends TestCase
             app(
                 GeminiBusinessClassifier::class
             )->classify(
-                $this->wainbeeLikeProfile()
+                $this->industrialDistributorProfile()
             );
 
             $this->fail(
@@ -321,7 +321,7 @@ class GeminiBusinessClassifierTest extends TestCase
         ];
     }
 
-    private function wainbeeLikeProfile(): array
+    private function industrialDistributorProfile(): array
     {
         return [
             'classification_input' => [

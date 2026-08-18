@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Review Your Competitors')
+@section('title', 'Review your competitors')
+@section('meta_description', 'Review the ranked competitor shortlist, remove weak matches, and add competitors manually.')
 
 @section('content')
 
@@ -34,30 +35,26 @@
         'classification.discovery_mode'
     ) === 'digital_global';
     $hasAnalysis = is_array($analysisResult);
-    $isPreview = (bool) ($isPreview ?? false);
 @endphp
 
 <header class="site-header">
     <div class="container header-inner">
-        <a href="{{ route('home') }}" class="brand" aria-label="Intellytics home">
-            <span class="intellytics-mark" aria-hidden="true">
+        <a href="{{ route('home') }}" class="brand" aria-label="Competitor Intelligence home">
+            <span class="brand-mark" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
             </span>
-            <span class="brand-name">Intellytics</span>
+            <span class="brand-name">Competitor Intelligence</span>
         </a>
 
         <nav class="main-nav" aria-label="Primary navigation">
-            <a href="#">Platform <span class="nav-chevron">⌄</span></a>
-            <a href="#">Solutions <span class="nav-chevron">⌄</span></a>
-            <a href="#">Resources <span class="nav-chevron">⌄</span></a>
-            <a href="#">Pricing</a>
-            <a href="#">Company <span class="nav-chevron">⌄</span></a>
+            <a href="{{ route('home') }}#analysis-form">Analyze</a>
+            <a href="{{ route('home') }}#how-it-works">How it works</a>
+            <a href="{{ route('home') }}#capabilities">Capabilities</a>
         </nav>
 
         <div class="header-actions">
-            <a href="#" class="login-link">Log in</a>
-            <a href="{{ route('home') }}#analysis-form" class="trial-button">
-                Start Free Trial
+            <a href="{{ route('home') }}#analysis-form" class="header-cta">
+                New analysis
             </a>
         </div>
     </div>
@@ -79,9 +76,9 @@
                 </h1>
 
                 <p class="competitors-intro">
-                    We scanned your market and found these businesses
+                    The analysis ranked these businesses as the strongest matches
                     <br class="step2-desktop-break">
-                    competing for the same customers.
+                    for the same market and customer needs.
                 </p>
             @else
                 <h1>
@@ -179,14 +176,13 @@
                         <div>
                             <h2>Review and Customize Your Competitors</h2>
                             <p>
-                                You can remove any or add others before starting your analysis.
+                                Remove weak matches or add others before saving your selection.
                             </p>
                         </div>
 
                         <button
                             type="button"
                             class="step2-add-button js-add-competitor"
-                            @disabled($isPreview)
                         >
                             <span aria-hidden="true">＋</span>
                             Add Competitor
@@ -580,7 +576,6 @@
                         <button
                             type="button"
                             class="step2-add-another js-add-competitor"
-                            @disabled($isPreview)
                         >
                             <span class="step2-add-another-icon" aria-hidden="true">＋</span>
                             <span class="step2-add-another-copy">
@@ -595,9 +590,9 @@
                             class="step2-start-button"
                             id="step2-start-button"
                             data-step3-url="{{ route('analysis.email') }}"
-                            @disabled(empty($topCompetitors) || $isPreview)
+                            @disabled(empty($topCompetitors))
                         >
-                            <span>Start Free Analysis</span>
+                            <span>Continue</span>
                             <span aria-hidden="true">→</span>
                         </button>
 
@@ -607,14 +602,14 @@
                                     <rect x="5" y="10" width="14" height="10" rx="2"></rect>
                                     <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
                                 </svg>
-                                No credit card required
+                                No account required
                             </span>
 
                             <span>
                                 <svg viewBox="0 0 24 24" aria-hidden="true">
                                     <path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"></path>
                                 </svg>
-                                Get results in 30 seconds
+                                Selection stays in this session
                             </span>
                         </div>
                     @else
@@ -698,65 +693,44 @@
     <div class="container footer-grid">
         <div class="footer-brand-column">
             <a href="{{ route('home') }}" class="brand footer-brand">
-                <span class="intellytics-mark" aria-hidden="true">
+                <span class="brand-mark" aria-hidden="true">
                     <i></i><i></i><i></i><i></i>
                 </span>
-                <span class="brand-name">Intellytics</span>
+                <span class="brand-name">Competitor Intelligence</span>
             </a>
 
             <p>
-                AI-powered market intelligence that helps you see what others miss
-                and act with confidence.
+                AI-assisted competitor discovery with deterministic fallbacks,
+                relevance scoring, and manual review.
             </p>
-
-            <div class="social-links">
-                <a href="#" aria-label="LinkedIn">in</a>
-                <a href="#" aria-label="X">𝕏</a>
-                <a href="#" aria-label="YouTube">▶</a>
-                <a href="#" aria-label="Facebook">f</a>
-            </div>
         </div>
 
         <div class="footer-column">
-            <h3>Platform</h3>
-            <a href="#">Features</a>
-            <a href="#">How It Works</a>
-            <a href="#">Integrations</a>
-            <a href="#">AI Briefings</a>
-            <a href="#">Status</a>
+            <h3>Product</h3>
+            <a href="{{ route('home') }}#analysis-form">Analyze</a>
+            <a href="{{ route('home') }}#how-it-works">How it works</a>
+            <a href="{{ route('home') }}#capabilities">Capabilities</a>
         </div>
 
         <div class="footer-column">
-            <h3>Solutions</h3>
-            <a href="#">For Marketing Teams</a>
-            <a href="#">For Agencies</a>
-            <a href="#">For Enterprises</a>
-            <a href="#">By Industry</a>
+            <h3>Discovery</h3>
+            <a href="{{ route('home') }}#capabilities">Website scanning</a>
+            <a href="{{ route('home') }}#capabilities">Google Places</a>
+            <a href="{{ route('home') }}#capabilities">AI classification</a>
         </div>
 
         <div class="footer-column">
-            <h3>Resources</h3>
-            <a href="#">Blog</a>
-            <a href="#">Case Studies</a>
-            <a href="#">Guides &amp; Templates</a>
-            <a href="#">Help Center</a>
-            <a href="#">Webinars</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Company</h3>
-            <a href="#">About Us</a>
-            <a href="#">Careers</a>
-            <a href="#">Partners</a>
-            <a href="#">Contact Us</a>
+            <h3>Quality</h3>
+            <a href="{{ route('home') }}#capabilities">Relevance scoring</a>
+            <a href="{{ route('home') }}#capabilities">Duplicate filtering</a>
+            <a href="{{ route('home') }}#capabilities">Manual refinement</a>
         </div>
     </div>
 
     <div class="container footer-bottom">
-        <span>© 2025 Intellytics Inc. All rights reserved.</span>
+        <span>© {{ now()->year }} Competitor Intelligence.</span>
         <div>
-            <a href="#">Privacy Policy</a>
-            <a href="#">Terms of Service</a>
+            <span>Independent portfolio project</span>
         </div>
     </div>
 </footer>
@@ -1726,4 +1700,3 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 @endsection
-

@@ -70,7 +70,7 @@ input {
     flex-shrink: 0;
 }
 
-.intellytics-mark {
+.brand-mark {
     width: 27px;
     height: 27px;
     display: inline-flex;
@@ -79,17 +79,17 @@ input {
     gap: 2px;
 }
 
-.intellytics-mark i {
+.brand-mark i {
     display: block;
     width: 4px;
     border-radius: 1px 1px 0 0;
     background: linear-gradient(180deg, #4838ff, #1c16d6);
 }
 
-.intellytics-mark i:nth-child(1) { height: 8px; }
-.intellytics-mark i:nth-child(2) { height: 13px; }
-.intellytics-mark i:nth-child(3) { height: 19px; }
-.intellytics-mark i:nth-child(4) { height: 24px; }
+.brand-mark i:nth-child(1) { height: 8px; }
+.brand-mark i:nth-child(2) { height: 13px; }
+.brand-mark i:nth-child(3) { height: 19px; }
+.brand-mark i:nth-child(4) { height: 24px; }
 
 .brand-name {
     font-family: 'Manrope', sans-serif;
@@ -105,18 +105,11 @@ input {
     margin-left: auto;
 }
 
-.main-nav a,
-.login-link {
+.main-nav a {
     color: #111528;
     font-size: 13px;
     font-weight: 700;
     white-space: nowrap;
-}
-
-.nav-chevron {
-    margin-left: 3px;
-    color: #67718c;
-    font-size: 12px;
 }
 
 .header-actions {
@@ -126,7 +119,7 @@ input {
     margin-left: 36px;
 }
 
-.trial-button {
+.header-cta {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -514,10 +507,6 @@ input {
     box-shadow: 0 7px 16px rgba(48, 35, 231, 0.18);
 }
 
-.play-mini {
-    font-size: 12px;
-}
-
 .dashboard-frame {
     position: relative;
     min-height: 300px;
@@ -678,23 +667,7 @@ input {
 .change-icon.orange { background: #fff2e2; color: #e48822; }
 .change-icon.blue { background: #e9efff; color: #4163dc; }
 
-.dashboard-play {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 54px;
-    height: 54px;
-    display: grid;
-    place-items: center;
-    border-radius: 50%;
-    background: #292174;
-    color: #fff;
-    font-size: 18px;
-    box-shadow: 0 8px 18px rgba(25, 20, 78, 0.24);
-    transform: translate(-28%, -50%);
-}
-
-/* Trusted logos */
+/* Analysis layers */
 
 .trusted-section {
     padding: 2px 0 18px;
@@ -725,15 +698,6 @@ input {
     font-family: 'DM Sans', sans-serif;
     font-size: 7px;
     font-weight: 600;
-}
-
-.trusted-logos .abb {
-    font-size: 23px;
-    letter-spacing: 0.06em;
-}
-
-.trusted-logos .rexroth {
-    font-size: 17px;
 }
 
 /* Features */
@@ -799,7 +763,7 @@ input {
     line-height: 1.45;
 }
 
-/* Morning intelligence */
+/* Resilient analysis */
 
 .morning-section {
     padding: 0 0 20px;
@@ -853,7 +817,7 @@ input {
     font-weight: 800;
 }
 
-/* Monitoring + benefits */
+/* Analysis signals + benefits */
 
 .always-on-section {
     padding: 2px 0 19px;
@@ -935,7 +899,7 @@ input {
     line-height: 1.45;
 }
 
-/* Testimonials + stats */
+/* Result principles + limits */
 
 .proof-section {
     padding: 0 0 18px;
@@ -1115,7 +1079,7 @@ input {
 
 .footer-grid {
     display: grid;
-    grid-template-columns: 1.4fr repeat(4, 1fr);
+    grid-template-columns: 1.4fr repeat(3, 1fr);
     gap: 42px;
     padding-top: 28px;
     padding-bottom: 22px;
@@ -1135,17 +1099,6 @@ input {
     color: #d4d9e8;
     font-size: 10px;
     line-height: 1.5;
-}
-
-.social-links {
-    display: flex;
-    gap: 17px;
-}
-
-.social-links a {
-    color: #fff;
-    font-size: 15px;
-    font-weight: 800;
 }
 
 .footer-column {
@@ -1290,13 +1243,10 @@ input {
 
     .brand-name {
         font-size: 17px;
+        white-space: nowrap;
     }
 
-    .login-link {
-        display: none;
-    }
-
-    .trial-button {
+    .header-cta {
         min-height: 35px;
         padding: 0 13px;
         font-size: 11px;
@@ -1409,7 +1359,7 @@ input {
     }
 }
 
-/* Competitors page — Hina Step 2 reference */
+/* Competitor selection */
 
 .competitors-page {
     min-height: calc(100vh - 64px);
@@ -1966,7 +1916,7 @@ input {
     line-height: 1.5;
 }
 
-/* Step 2 footer sizing follows the supplied reference */
+/* Step 2 footer sizing */
 .competitors-page + .site-footer .footer-grid {
     padding-top: 27px;
     padding-bottom: 22px;
@@ -2079,7 +2029,7 @@ input {
 }
 
 @media (max-width: 560px) {
-    .site-header .trial-button {
+    .site-header .header-cta {
         padding: 0 11px;
     }
 
@@ -2153,6 +2103,12 @@ input {
 
     .competitors-page + .site-footer .footer-grid {
         padding-top: 24px;
+    }
+}
+
+@media (max-width: 480px) {
+    .site-header .header-cta {
+        display: none;
     }
 }
 
