@@ -28,6 +28,39 @@ class CompetitorEnrichmentService
             return $competitors;
         }
 
+        $placeIds = [];
+
+        foreach ($competitors as $competitor) {
+            if (! is_array($competitor)) {
+                continue;
+            }
+
+            $placeId = data_get(
+                $competitor,
+                'id'
+            );
+
+            if (
+                is_string($placeId)
+                && trim($placeId) !== ''
+            ) {
+                $placeIds[] = trim($placeId);
+            }
+        }
+
+        if ($placeIds === []) {
+            return $competitors;
+        }
+
+        try {
+            $detailsByPlaceId = $this->googlePlaces
+                ->getPlaceDetailsBatch(
+                    $placeIds
+                );
+        } catch (RuntimeException) {
+            return $competitors;
+        }
+
         $enriched = [];
 
         foreach ($competitors as $competitor) {
@@ -48,15 +81,9 @@ class CompetitorEnrichmentService
                 continue;
             }
 
-            try {
-                $details = $this->googlePlaces
-                    ->getPlaceDetails(
-                        trim($placeId)
-                    );
-            } catch (RuntimeException) {
-                $enriched[] = $competitor;
-                continue;
-            }
+            $details = $detailsByPlaceId[
+                trim($placeId)
+            ] ?? null;
 
             if (! is_array($details)) {
                 $enriched[] = $competitor;

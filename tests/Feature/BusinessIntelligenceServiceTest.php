@@ -3,11 +3,12 @@
 namespace Tests\Feature;
 
 use App\Contracts\AiBusinessClassifier;
+use App\Exceptions\AnalysisDeadlineExceeded;
 use App\Services\AiBusinessClassifierManager;
+use App\Services\AnalysisDeadline;
 use App\Services\BusinessClassifier;
 use App\Services\BusinessIntelligenceService;
 use Mockery;
-use RuntimeException;
 use Tests\TestCase;
 
 class BusinessIntelligenceServiceTest extends TestCase
@@ -625,7 +626,7 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
     }
 
-    public function test_api_failure_returns_exact_heuristic_fallback(): void
+    public function test_slow_gemini_classification_returns_exact_heuristic_fallback(): void
     {
         $profile = $this->industrialDistributorProfile();
 
@@ -651,8 +652,8 @@ class BusinessIntelligenceServiceTest extends TestCase
             public function classify(
                 array $businessProfile
             ): array {
-                throw new RuntimeException(
-                    'Simulated quota or timeout error.'
+                throw new AnalysisDeadlineExceeded(
+                    'Simulated Gemini request timeout.'
                 );
             }
         };
@@ -676,6 +677,39 @@ class BusinessIntelligenceServiceTest extends TestCase
             $service->classify(
                 $profile
             )
+        );
+    }
+
+    public function test_slow_gemini_classification_is_skipped_when_the_request_budget_is_nearly_exhausted(): void
+    {
+        $profile = $this->industrialDistributorProfile();
+        $fallback = app(BusinessClassifier::class);
+        $manager = Mockery::mock(
+            AiBusinessClassifierManager::class
+        );
+
+        $manager->shouldReceive('driver')
+            ->never();
+
+        $now = 100.0;
+        $deadline = new AnalysisDeadline(
+            static function () use (&$now): float {
+                return $now;
+            }
+        );
+
+        $deadline->start(5, 1);
+        $now = 104.25;
+
+        $service = new BusinessIntelligenceService(
+            $fallback,
+            $manager,
+            $deadline
+        );
+
+        $this->assertSame(
+            $fallback->classify($profile),
+            $service->classify($profile)
         );
     }
 

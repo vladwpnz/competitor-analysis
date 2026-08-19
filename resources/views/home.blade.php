@@ -55,49 +55,28 @@
 @endphp
 
 
-<header class="site-header">
-    <div class="container header-inner">
-        <a href="{{ route('home') }}" class="brand" aria-label="Competitor Intelligence home">
-            <span class="brand-mark" aria-hidden="true">
-                <i></i><i></i><i></i><i></i>
-            </span>
-            <span class="brand-name">Competitor Intelligence</span>
-        </a>
+@include('partials.site-header')
 
-        <nav class="main-nav" aria-label="Primary navigation">
-            <a href="#analysis-form">Analyze</a>
-            <a href="#how-it-works">How it works</a>
-            <a href="#capabilities">Capabilities</a>
-        </nav>
-
-        <div class="header-actions">
-            <a href="#analysis-form" class="header-cta">Start analysis</a>
-        </div>
-    </div>
-</header>
-
-<main>
-    <section class="hero">
-        <div class="hero-dots hero-dots-left" aria-hidden="true"></div>
-        <div class="hero-dots hero-dots-right" aria-hidden="true"></div>
-
+<main id="main-content">
+    <section class="hero" aria-labelledby="hero-title">
         <div class="container hero-inner">
             <div class="hero-copy">
-                <div class="eyebrow">
-                    <span class="eyebrow-spark">✦</span>
-                    AI-ASSISTED COMPETITOR INTELLIGENCE
-                </div>
+                <p class="hero-kicker">Competitor research, grounded in evidence</p>
 
-                <h1>
-                    Find the Competitors
-                    <span>That Actually Matter.</span>
+                <h1 id="hero-title">
+                    Find competitors <span>that matter.</span>
                 </h1>
 
                 <p class="hero-description">
-                    Combine website signals, Google Business data, and market context to
-                    <br class="desktop-break">
-                    build a relevant, ranked competitor shortlist.
+                    Turn website signals and Google Business data into a ranked shortlist you can inspect and refine.
                 </p>
+
+                <div class="hero-proof" aria-label="Analysis principles">
+                    <span>Market-aware discovery</span>
+                    <span>Inspectable ranking</span>
+                    <span>Human review</span>
+                </div>
+            </div>
 
                 <form
                     id="analysis-form"
@@ -106,6 +85,14 @@
                     method="POST"
                 >
                     @csrf
+
+                    <div class="analysis-form-header">
+                        <div>
+                            <span class="analysis-form-label">New analysis</span>
+                            <h2>Define the business</h2>
+                        </div>
+                        <span class="analysis-form-status">Two verified inputs</span>
+                    </div>
 
                     @if ($editMode !== null)
                         <input
@@ -118,14 +105,13 @@
                     <div class="analysis-fields">
                         <div class="form-step">
                             <div class="form-heading">
-                                <span class="form-icon" aria-hidden="true">◎</span>
-                                <div>
-                                    <label for="website">
-                                        <strong>1</strong> Your Website
-                                    </label>
-                                    <p>Enter your website to get started</p>
-                                </div>
+                                <span class="form-index" aria-hidden="true">01</span>
+                                <label for="website">Business website</label>
                             </div>
+
+                            <p class="field-helper" id="website-helper">
+                                Used to read services, positioning and business signals.
+                            </p>
 
                             <div class="input-shell">
                                 <input
@@ -138,6 +124,7 @@
                                     inputmode="url"
                                     autocapitalize="none"
                                     spellcheck="false"
+                                    aria-describedby="website-helper"
                                     @if ($editMode === 'google_business') readonly @endif
                                     @if ($editMode === 'website') autofocus @endif
                                     required
@@ -145,26 +132,25 @@
                             </div>
 
                             @error('website')
-                                <div class="field-error">{{ $message }}</div>
+                                <div class="field-error" role="alert">{{ $message }}</div>
                             @enderror
+                        </div>
 
-                            <div class="field-benefits" aria-label="Website analysis benefits">
-                                <span>✓ Extract business signals</span>
-                                <span>✓ Identify services and positioning</span>
-                                <span>✓ Handle blocked sites safely</span>
-                            </div>
+                        <div class="analysis-connector" aria-hidden="true">
+                            <span></span>
+                            <b>+</b>
+                            <span></span>
                         </div>
 
                         <div class="form-step">
                             <div class="form-heading">
-                                <span class="form-icon form-icon-pin" aria-hidden="true">●</span>
-                                <div>
-                                    <label for="google_business">
-                                        <strong>2</strong> Your Google Business Profile
-                                    </label>
-                                    <p>Enter your Google Business Profile to get started</p>
-                                </div>
+                                <span class="form-index" aria-hidden="true">02</span>
+                                <label for="google_business">Google Business Profile</label>
                             </div>
+
+                            <p class="field-helper" id="google-business-helper">
+                                Confirms identity and adds location context where relevant.
+                            </p>
 
                             <div
                                 class="business-search-wrap"
@@ -183,6 +169,7 @@
                                         aria-autocomplete="list"
                                         aria-controls="google-business-suggestions"
                                         aria-expanded="false"
+                                        aria-describedby="google-business-helper google-business-status"
                                         @if ($editMode === 'website') readonly @endif
                                         @if ($editMode === 'google_business') autofocus @endif
                                         required
@@ -224,554 +211,222 @@
                             ></div>
 
                             @error('google_business')
-                                <div class="field-error">{{ $message }}</div>
+                                <div class="field-error" role="alert">{{ $message }}</div>
                             @enderror
 
                             @error('google_place_id')
-                                <div class="field-error">{{ $message }}</div>
+                                <div class="field-error" role="alert">{{ $message }}</div>
                             @enderror
 
                             @error('google_places_session_token')
-                                <div class="field-error">{{ $message }}</div>
+                                <div class="field-error" role="alert">{{ $message }}</div>
                             @enderror
-
-                            <div class="field-benefits" aria-label="Google Business analysis benefits">
-                                <span>✓ Confirm business identity</span>
-                                <span>✓ Add geographic context</span>
-                                <span>✓ Improve local relevance</span>
-                            </div>
                         </div>
                     </div>
 
                     <button type="submit" class="analysis-button">
-                        <span>Analyze Competitors</span>
-                        <span class="button-arrow">→</span>
+                        <span>Build competitor shortlist</span>
+                        <span class="button-arrow" aria-hidden="true">↗</span>
                     </button>
 
                     <div class="analysis-trust">
-                        <span><b>▣</b> No account required</span>
-                        <span><b>⊙</b> Graceful API fallbacks</span>
-                        <span><b>⊙</b> Review every match</span>
+                        <span>No account required</span>
+                        <span>You review every match</span>
+                    </div>
+
+                    <div
+                        class="analysis-loading"
+                        id="analysis-loading"
+                        aria-live="polite"
+                        hidden
+                    >
+                        <div class="analysis-loading-head">
+                            <span class="analysis-loading-mark" aria-hidden="true"></span>
+                            <div>
+                                <strong>Building your shortlist</strong>
+                                <span>We are combining business and market signals.</span>
+                            </div>
+                        </div>
+
+                        <ol class="analysis-loading-stages">
+                            <li>Reading website signals</li>
+                            <li>Understanding the business</li>
+                            <li>Identifying market scope</li>
+                            <li>Discovering competitor candidates</li>
+                            <li>Ranking by relevance</li>
+                        </ol>
                     </div>
                 </form>
-            </div>
         </div>
     </section>
 
-    <section class="demo-section" id="how-it-works">
+    <section class="pipeline-section" id="how-it-works" aria-labelledby="pipeline-title">
         <div class="container">
-            <div class="demo-panel">
-                <div class="demo-copy">
-                    <span class="section-label">HOW THE ANALYSIS WORKS</span>
-                    <h2>From Business Signals<br>to a Ranked Shortlist.</h2>
-                    <p>
-                        The application scans the website, validates the selected
-                        business profile, classifies the market, and ranks the most
-                        relevant competitor candidates.
-                    </p>
-                    <a href="#analysis-form" class="primary-small-button">
-                        Start an analysis
-                    </a>
-                </div>
-
-                <div class="dashboard-frame">
-                    <div class="dashboard-sidebar">
-                        <span class="mini-logo-bars"><i></i><i></i><i></i></span>
-                        <b></b><b></b><b></b><b></b><b></b>
-                    </div>
-
-                    <div class="dashboard-content">
-                        <div class="dashboard-topbar">
-                            <strong>Analysis</strong>
-                            <div>
-                                <span>Ranked competitors</span>
-                                <span>Top matches</span>
-                            </div>
-                        </div>
-
-                        <div class="dashboard-grid">
-                            <div class="chart-card">
-                                <div class="tiny-title">Relevance scores</div>
-                                <svg viewBox="0 0 260 100" role="img" aria-label="Competitor relevance score chart">
-                                    <polyline
-                                        points="5,78 45,58 83,72 122,42 160,55 202,27 250,42"
-                                        fill="none"
-                                        stroke="#4b36ff"
-                                        stroke-width="4"
-                                        stroke-linecap="round"
-                                        stroke-linejoin="round"
-                                    />
-                                    <line x1="5" y1="88" x2="250" y2="88" stroke="#e9e8f5" />
-                                    <line x1="5" y1="61" x2="250" y2="61" stroke="#f0eff7" />
-                                    <line x1="5" y1="34" x2="250" y2="34" stroke="#f0eff7" />
-                                </svg>
-                            </div>
-
-                            <div class="impact-card">
-                                <div class="tiny-title">Shortlist</div>
-                                <div class="impact-row">
-                                    <strong>5</strong>
-                                    <span class="donut"></span>
-                                </div>
-                                <small>ranked competitors</small>
-                            </div>
-                        </div>
-
-                        <div class="recent-changes">
-                            <div class="tiny-title">Analysis stages</div>
-                            <div><span class="change-icon purple">▣</span> Website profile extracted <b>Ready</b></div>
-                            <div><span class="change-icon green">▣</span> Business profile matched <b>Ready</b></div>
-                            <div><span class="change-icon orange">▣</span> Market scope classified <b>Ready</b></div>
-                            <div><span class="change-icon blue">▣</span> Duplicates and own business removed <b>Ready</b></div>
-                        </div>
-                    </div>
-
-                </div>
+            <div class="pipeline-heading">
+                <p>How the analysis works</p>
+                <h2 id="pipeline-title">From raw signals to a shortlist you can defend.</h2>
             </div>
+
+            <ol class="pipeline-list">
+                <li>
+                    <span>01</span>
+                    <strong>Website signals</strong>
+                    <p>Read services, positioning and business context.</p>
+                </li>
+                <li>
+                    <span>02</span>
+                    <strong>Business understanding</strong>
+                    <p>Classify the operating model and customer market.</p>
+                </li>
+                <li>
+                    <span>03</span>
+                    <strong>Competitor discovery</strong>
+                    <p>Search locally or across broader digital markets.</p>
+                </li>
+                <li>
+                    <span>04</span>
+                    <strong>Relevance ranking</strong>
+                    <p>Score type, services, query evidence and distance.</p>
+                </li>
+                <li>
+                    <span>05</span>
+                    <strong>Final shortlist</strong>
+                    <p>Remove weak matches and add known competitors.</p>
+                </li>
+            </ol>
         </div>
     </section>
 
-    <section class="trusted-section">
-        <div class="container">
-            <p>Analysis sources and decision layers</p>
-            <div class="trusted-logos" aria-label="Analysis sources and decision layers">
-                <span>Website<br><small>signals</small></span>
-                <span>Google<br><small>Places</small></span>
-                <span>Gemini<br><small>classification</small></span>
-                <span>Deterministic<br><small>fallback</small></span>
-                <span>Relevance<br><small>scoring</small></span>
-                <span>Duplicate<br><small>filtering</small></span>
-                <span>Manual<br><small>review</small></span>
+    <section class="scope-section" aria-labelledby="scope-title">
+        <div class="container scope-layout">
+            <div class="scope-copy">
+                <h2 id="scope-title">The market decides how discovery works.</h2>
+                <p>
+                    A nearby service business and a global software platform should not be ranked by the same geographic assumptions.
+                </p>
+            </div>
+
+            <div class="scope-comparison">
+                <article>
+                    <span>Local and hybrid markets</span>
+                    <h3>Relevance with geographic context</h3>
+                    <p>Distance supports the ranking without outweighing business type and service fit.</p>
+                </article>
+
+                <article>
+                    <span>Broader markets</span>
+                    <h3>Semantic fit before proximity</h3>
+                    <p>Discovery prioritizes direct competitors, product intent and market alignment.</p>
+                </article>
             </div>
         </div>
     </section>
 
     <section class="features-section" id="capabilities">
-        <div class="container">
-            <h2 class="center-section-title">A Focused Competitor Discovery Pipeline.</h2>
-
-            <div class="feature-grid">
-                <article class="feature-card">
-                    <span class="feature-icon purple-icon">▣</span>
-                    <h3>Website scanning</h3>
-                    <p>Extract titles, descriptions, headings, and readable page content.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon green-icon">⌁</span>
-                    <h3>Business matching</h3>
-                    <p>Validate that the selected Google Business Profile belongs to the website.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon orange-icon">★</span>
-                    <h3>AI classification</h3>
-                    <p>Use Gemini to identify the operating model, market scope, and search intent.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon red-icon">▣</span>
-                    <h3>Deterministic fallback</h3>
-                    <p>Continue with rule-based classification when AI is unavailable or unconfigured.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon blue-icon">▰</span>
-                    <h3>Market-aware discovery</h3>
-                    <p>Handle local, hybrid, and broader markets with the right geographic context.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon blue-icon">∞</span>
-                    <h3>Staged search</h3>
-                    <p>Expand discovery only when the initial candidate pool lacks strong matches.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon green-icon">▤</span>
-                    <h3>Relevance scoring</h3>
-                    <p>Rank candidates using business type, services, query evidence, and distance.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon purple-icon">✦</span>
-                    <h3>Duplicate filtering</h3>
-                    <p>Collapse duplicate locations and repeated records into distinct companies.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon red-icon">▧</span>
-                    <h3>Own-business exclusion</h3>
-                    <p>Remove the subject business and related locations from competitor results.</p>
-                </article>
-
-                <article class="feature-card">
-                    <span class="feature-icon purple-icon">♙</span>
-                    <h3>Manual refinement</h3>
-                    <p>Add or remove competitors while preserving the curated list in the session.</p>
-                </article>
-            </div>
-        </div>
-    </section>
-
-    <section class="morning-section">
-        <div class="container morning-grid">
-            <div class="dashboard-frame dashboard-frame-secondary">
-                <div class="dashboard-sidebar">
-                    <span class="mini-logo-bars"><i></i><i></i><i></i></span>
-                    <b></b><b></b><b></b><b></b><b></b>
-                </div>
-
-                <div class="dashboard-content">
-                    <div class="dashboard-topbar">
-                        <strong>Analysis</strong>
-                        <div>
-                            <span>Ranked competitors</span>
-                            <span>Top matches</span>
-                        </div>
-                    </div>
-
-                    <div class="dashboard-grid">
-                        <div class="chart-card">
-                            <div class="tiny-title">Relevance scores</div>
-                            <svg viewBox="0 0 260 100" role="img" aria-label="Competitor relevance score chart">
-                                <polyline
-                                    points="5,78 45,58 83,72 122,42 160,55 202,27 250,42"
-                                    fill="none"
-                                    stroke="#4b36ff"
-                                    stroke-width="4"
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                />
-                                <line x1="5" y1="88" x2="250" y2="88" stroke="#e9e8f5" />
-                                <line x1="5" y1="61" x2="250" y2="61" stroke="#f0eff7" />
-                                <line x1="5" y1="34" x2="250" y2="34" stroke="#f0eff7" />
-                            </svg>
-                        </div>
-
-                        <div class="impact-card">
-                            <div class="tiny-title">Shortlist</div>
-                            <div class="impact-row">
-                                <strong>5</strong>
-                                <span class="donut"></span>
-                            </div>
-                            <small>ranked competitors</small>
-                        </div>
-                    </div>
-
-                    <div class="recent-changes">
-                        <div class="tiny-title">Ranking evidence</div>
-                        <div><span class="change-icon purple">▣</span> Business type compatibility <b>Strong</b></div>
-                        <div><span class="change-icon green">▣</span> Service keyword overlap <b>Strong</b></div>
-                        <div><span class="change-icon orange">▣</span> Search query evidence <b>Matched</b></div>
-                        <div><span class="change-icon blue">▣</span> Geographic relevance <b>Matched</b></div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="morning-copy">
-                <span class="section-label">RESILIENT BY DESIGN</span>
-                <h2>
-                    Useful Results Shouldn’t<br>
-                    Depend on One API.<br>
-                    <span>Fallbacks Keep the Flow Moving.</span>
-                </h2>
+        <div class="container capabilities-layout">
+            <div class="capabilities-heading">
+                <h2>Built for evidence, not a black-box list.</h2>
                 <p>
-                    AI improves classification and discovery, while deterministic
-                    rules and staged search preserve a useful path when external
-                    services are unavailable.
+                    Every stage contributes to a shortlist that remains inspectable and under your control.
                 </p>
-                <ul class="check-list">
-                    <li>Classify with Gemini when configured</li>
-                    <li>Fall back to deterministic business rules</li>
-                    <li>Continue from Google data when a website blocks scanning</li>
-                    <li>Return clear errors for unsafe or invalid URLs</li>
-                </ul>
-                <a href="#analysis-form" class="primary-small-button">Try the analysis flow</a>
-            </div>
-        </div>
-    </section>
-
-    <section class="always-on-section">
-        <div class="container">
-            <h2 class="center-section-title">Signals Considered at Every Stage.</h2>
-
-            <div class="monitor-grid">
-                <div class="monitor-item"><span>▣</span><b>Website<br>Content</b></div>
-                <div class="monitor-item"><span>★</span><b>Google<br>Profile</b></div>
-                <div class="monitor-item"><span>▰</span><b>Business<br>Type</b></div>
-                <div class="monitor-item"><span>⌁</span><b>Market<br>Scope</b></div>
-                <div class="monitor-item"><span>∞</span><b>Service<br>Keywords</b></div>
-                <div class="monitor-item"><span>◎</span><b>Search<br>Evidence</b></div>
-                <div class="monitor-item"><span>◷</span><b>Travel<br>Distance</b></div>
-                <div class="monitor-item"><span>◇</span><b>Brand<br>Identity</b></div>
-                <div class="monitor-item"><span>▤</span><b>Candidate<br>Quality</b></div>
-                <div class="monitor-item"><span>✦</span><b>AI<br>Discovery</b></div>
             </div>
 
-            <p class="always-on-caption">Signals are normalized before candidates are scored and ranked.</p>
+            <div class="capability-grid">
+                <article class="capability-primary">
+                    <span>Business intelligence layer</span>
+                    <h3>Website scanning and AI-assisted classification</h3>
+                    <p>
+                        The application combines readable website content with Google Business data to understand services, operating model and search intent.
+                    </p>
+                    <ul>
+                        <li>Website and Google Business matching</li>
+                        <li>Gemini classification when configured</li>
+                        <li>Deterministic classification fallback</li>
+                    </ul>
+                </article>
 
-            <div class="benefit-grid">
-                <article>
-                    <span class="benefit-icon">◷</span>
-                    <h3>Relevant by default</h3>
-                    <p>Type, service, and query evidence outweigh a simple nearest-business search.</p>
+                <article class="capability-detail">
+                    <span>Discovery</span>
+                    <h3>Staged, market-aware search</h3>
+                    <p>Search expands only when the first candidate pool lacks enough strong matches.</p>
                 </article>
-                <article>
-                    <span class="benefit-icon">▥</span>
-                    <h3>Market-aware</h3>
-                    <p>Local businesses keep distance context while broader markets avoid local bias.</p>
+
+                <article class="capability-detail capability-detail-tinted">
+                    <span>Quality control</span>
+                    <h3>Ranking and duplicate removal</h3>
+                    <p>Type, service, query and distance evidence shape the order while duplicate companies and the subject business are excluded.</p>
                 </article>
-                <article>
-                    <span class="benefit-icon">◎</span>
-                    <h3>Failure-tolerant</h3>
-                    <p>External API failures degrade gracefully instead of replacing the analysis with mock data.</p>
-                </article>
-                <article>
-                    <span class="benefit-icon">♙</span>
-                    <h3>Human-controlled</h3>
-                    <p>Review the shortlist, remove weak matches, and add competitors manually.</p>
+
+                <article class="capability-detail capability-detail-plain">
+                    <span>Human review</span>
+                    <h3>A shortlist you can edit</h3>
+                    <p>Remove weak matches, search manually and keep the final selection in the current session.</p>
                 </article>
             </div>
         </div>
     </section>
 
-    <section class="proof-section">
-        <div class="container">
-            <h2 class="center-section-title proof-title">Built for Inspectable Results.</h2>
-
-            <div class="testimonial-grid">
-                <article class="testimonial-card">
-                    <p>Each ranked candidate keeps the evidence used to assess relevance.</p>
-                    <div class="testimonial-person">
-                        <span class="avatar avatar-sarah">01</span>
-                        <div><b>Transparent ranking</b><small>Scores, matches, and search modes</small></div>
-                    </div>
-                </article>
-
-                <article class="testimonial-card">
-                    <p>The pipeline keeps distinct paths for local and broader competitor discovery.</p>
-                    <div class="testimonial-person">
-                        <span class="avatar avatar-michael">02</span>
-                        <div><b>Scope-aware search</b><small>Geographic or semantic discovery</small></div>
-                    </div>
-                </article>
-
-                <article class="testimonial-card">
-                    <p>Manual selection remains available after automated ranking completes.</p>
-                    <div class="testimonial-person">
-                        <span class="avatar avatar-emily">03</span>
-                        <div><b>Curated shortlist</b><small>Add, remove, and retain selections</small></div>
-                    </div>
-                </article>
+    <section class="resilience-section" aria-labelledby="resilience-title">
+        <div class="container resilience-layout">
+            <div>
+                <h2 id="resilience-title">Useful results should not depend on one API.</h2>
+                <p>
+                    AI improves classification and discovery. Deterministic rules keep the analysis useful when an external service is unavailable.
+                </p>
             </div>
 
-            <div class="stats-bar">
-                <div><strong>4</strong><span>maximum search queries</span></div>
-                <div><strong>5</strong><span>top ranked matches</span></div>
-                <div><strong>20</strong><span>selection limit</span></div>
-                <div><strong>2</strong><span>classification paths</span></div>
+            <ul class="resilience-list">
+                <li>
+                    <strong>Blocked website</strong>
+                    <span>Continue with verified Google Business data when safe.</span>
+                </li>
+                <li>
+                    <strong>AI unavailable</strong>
+                    <span>Fall back to deterministic business classification.</span>
+                </li>
+                <li>
+                    <strong>Thin candidate pool</strong>
+                    <span>Expand discovery in controlled stages.</span>
+                </li>
+            </ul>
+        </div>
+    </section>
+
+    <section class="review-section" aria-labelledby="review-title">
+        <div class="container review-layout">
+            <div class="review-copy">
+                <h2 id="review-title">Automation finds the shortlist. You make the final call.</h2>
+                <p>
+                    Ranking evidence stays visible, selected competitors remain editable and manual discovery is part of the same workflow.
+                </p>
+            </div>
+
+            <div class="review-signals" aria-label="Review controls">
+                <span>Relevance score</span>
+                <span>Matched search evidence</span>
+                <span>Distance when relevant</span>
+                <span>Google rating when available</span>
+                <span>Add or remove competitors</span>
             </div>
         </div>
     </section>
 
     <section class="bottom-cta">
         <div class="container cta-inner">
-            <div class="cta-illustration" aria-hidden="true">
-                <span>✓</span>
-            </div>
-
             <div class="cta-copy">
-                <h2>Build a competitor shortlist you can review</h2>
-                <p>Start with a website and the matching Google Business Profile.</p>
+                <h2>Start with the business you know.</h2>
+                <p>We will build the competitor shortlist from there.</p>
             </div>
 
             <a href="#analysis-form" class="cta-button">
-                Start an Analysis
-                <small>No account required</small>
+                Start an analysis
+                <span aria-hidden="true">↗</span>
             </a>
         </div>
     </section>
 </main>
 
-<footer class="site-footer">
-    <div class="container footer-grid">
-        <div class="footer-brand-column">
-            <a href="{{ route('home') }}" class="brand footer-brand">
-                <span class="brand-mark" aria-hidden="true">
-                    <i></i><i></i><i></i><i></i>
-                </span>
-                <span class="brand-name">Competitor Intelligence</span>
-            </a>
-
-            <p>
-                AI-assisted competitor discovery with deterministic fallbacks,
-                relevance scoring, and manual review.
-            </p>
-        </div>
-
-        <div class="footer-column">
-            <h3>Product</h3>
-            <a href="#analysis-form">Analyze</a>
-            <a href="#how-it-works">How it works</a>
-            <a href="#capabilities">Capabilities</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Discovery</h3>
-            <a href="#capabilities">Website scanning</a>
-            <a href="#capabilities">Google Places</a>
-            <a href="#capabilities">AI classification</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Quality</h3>
-            <a href="#capabilities">Relevance scoring</a>
-            <a href="#capabilities">Duplicate filtering</a>
-            <a href="#capabilities">Manual refinement</a>
-        </div>
-    </div>
-
-    <div class="container footer-bottom">
-        <span>© {{ now()->year }} Competitor Intelligence.</span>
-        <div>
-            <span>Independent portfolio project</span>
-        </div>
-    </div>
-</footer>
-
-<style>
-    .business-search-wrap {
-        position: relative;
-        width: 100%;
-    }
-
-    .business-search-loader {
-        display: none;
-        width: 16px;
-        height: 16px;
-        margin-left: auto;
-        flex: 0 0 16px;
-        border: 2px solid rgba(91, 64, 180, 0.18);
-        border-top-color: currentColor;
-        border-radius: 50%;
-        animation: business-search-spin 0.7s linear infinite;
-    }
-
-    .business-search-loader.is-visible {
-        display: block;
-    }
-
-    @keyframes business-search-spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    .business-suggestions {
-        position: absolute;
-        top: calc(100% + 8px);
-        left: 0;
-        right: 0;
-        z-index: 50;
-        max-height: 340px;
-        overflow-y: auto;
-        background: #ffffff;
-        border: 1px solid rgba(25, 20, 45, 0.12);
-        border-radius: 14px;
-        box-shadow: 0 18px 45px rgba(25, 20, 45, 0.14);
-        padding: 6px;
-    }
-
-    .business-suggestions[hidden] {
-        display: none;
-    }
-
-    .business-suggestion {
-        width: 100%;
-        display: block;
-        padding: 12px 14px;
-        border: 0;
-        border-radius: 10px;
-        background: transparent;
-        text-align: left;
-        cursor: pointer;
-        font: inherit;
-        color: inherit;
-        transition:
-            background-color 0.15s ease,
-            transform 0.15s ease;
-    }
-
-    .business-suggestion:hover,
-    .business-suggestion.is-active {
-        background: rgba(91, 64, 180, 0.07);
-    }
-
-    .business-suggestion:focus-visible {
-        outline: 2px solid currentColor;
-        outline-offset: -2px;
-    }
-
-    .business-suggestion-name {
-        display: block;
-        font-size: 14px;
-        line-height: 1.35;
-        font-weight: 700;
-        color: #1d1930;
-    }
-
-    .business-suggestion-secondary {
-        display: block;
-        margin-top: 3px;
-        font-size: 12px;
-        line-height: 1.4;
-        font-weight: 400;
-        color: #777286;
-    }
-
-    .google-maps-attribution {
-        display: flex;
-        justify-content: flex-end;
-        align-items: center;
-        min-height: 28px;
-        padding: 5px 12px 3px;
-        margin-top: 3px;
-        border-top: 1px solid rgba(25, 20, 45, 0.08);
-        font-family: Roboto, Arial, sans-serif;
-        font-size: 12px;
-        line-height: 1;
-        font-weight: 400;
-        color: #5e5e5e;
-        white-space: nowrap;
-    }
-
-    .business-search-status {
-        min-height: 18px;
-        margin-top: 7px;
-        font-size: 12px;
-        line-height: 1.4;
-        color: #777286;
-    }
-
-    .business-search-status.is-selected {
-        color: #3f7d59;
-    }
-
-    .business-search-status.is-error {
-        color: #b42318;
-    }
-
-    @media (max-width: 767px) {
-        .business-suggestions {
-            max-height: 280px;
-        }
-
-        .business-suggestion {
-            padding: 11px 12px;
-        }
-    }
-</style>
+@include('partials.site-footer')
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -805,6 +460,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const loader = document.getElementById(
         'business-search-loader'
+    );
+
+    const analysisLoading = document.getElementById(
+        'analysis-loading'
+    );
+
+    const submitButton = form?.querySelector(
+        '.analysis-button'
     );
 
     if (
@@ -1046,7 +709,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeSuggestions();
 
         setStatus(
-            '✓ Google Business selected',
+            'Google Business Profile selected',
             'selected'
         );
     };
@@ -1467,13 +1130,34 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Please search for the business again and select it from the Google results.',
                     'error'
                 );
+
+                return;
+            }
+
+            closeSuggestions();
+
+            if (analysisLoading) {
+                analysisLoading.hidden = false;
+            }
+
+            form.classList.add(
+                'is-analyzing'
+            );
+
+            form.setAttribute(
+                'aria-busy',
+                'true'
+            );
+
+            if (submitButton) {
+                submitButton.disabled = true;
             }
         }
     );
 
     if (hasExistingSelection) {
         setStatus(
-            '✓ Google Business selected',
+            'Google Business Profile selected',
             'selected'
         );
     }

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\CompetitorAnalysisService;
 use App\Services\GooglePlacesService;
+use App\Services\AnalysisDeadline;
 use App\Services\WebsiteScanner;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +22,8 @@ class AnalysisController extends Controller
         Request $request,
         WebsiteScanner $websiteScanner,
         GooglePlacesService $googlePlaces,
-        CompetitorAnalysisService $competitorAnalysis
+        CompetitorAnalysisService $competitorAnalysis,
+        AnalysisDeadline $analysisDeadline
     ): RedirectResponse {
         $normalizedWebsite =
             $this->normalizeWebsiteInput(
@@ -64,6 +66,29 @@ class AnalysisController extends Controller
                 'in:website,google_business',
             ],
         ]);
+
+        $analysisDeadline->start(
+            max(
+                5.0,
+                min(
+                    26.0,
+                    (float) config(
+                        'analysis.request_budget_seconds',
+                        24
+                    )
+                )
+            ),
+            max(
+                0.5,
+                min(
+                    4.0,
+                    (float) config(
+                        'analysis.response_reserve_seconds',
+                        2
+                    )
+                )
+            )
+        );
 
         $googlePlaceId = trim(
             (string) (

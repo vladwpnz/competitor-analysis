@@ -2,9 +2,11 @@
 
 namespace Tests\Feature;
 
+use App\Http\Controllers\CompetitorSelectionController;
 use App\Services\GeminiCompetitorDiscoveryService;
 use App\Services\GooglePlacesService;
 use Mockery;
+use ReflectionMethod;
 use Tests\TestCase;
 
 class CompetitorSelectionTest extends TestCase
@@ -440,6 +442,14 @@ class CompetitorSelectionTest extends TestCase
                 'Metro Plumbing'
             )
             ->assertJsonPath(
+                'competitor.is_manual',
+                true
+            )
+            ->assertJsonPath(
+                'competitor.evidence',
+                'Added manually to the shortlist'
+            )
+            ->assertJsonPath(
                 'count',
                 2
             );
@@ -458,6 +468,31 @@ class CompetitorSelectionTest extends TestCase
                         '1._manual_selection'
                     ) === true;
             }
+        );
+    }
+
+    public function test_automatically_discovered_frontend_competitor_uses_neutral_evidence_fallback(): void
+    {
+        $presenter = new ReflectionMethod(
+            CompetitorSelectionController::class,
+            'frontendCompetitor'
+        );
+
+        $competitor = $presenter->invoke(
+            app(CompetitorSelectionController::class),
+            $this->place(
+                'automatic-place',
+                'Automatic Plumbing'
+            )
+        );
+
+        $this->assertFalse(
+            $competitor['is_manual']
+        );
+
+        $this->assertSame(
+            'Included from the current analysis',
+            $competitor['evidence']
         );
     }
 

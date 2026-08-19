@@ -431,6 +431,89 @@ class GooglePlacesServiceTest extends TestCase
         );
     }
 
+    public function test_independent_competitor_searches_are_sent_as_one_batch(): void
+    {
+        $this->configureGoogle();
+        Http::preventStrayRequests();
+
+        Http::fake([
+            'https://places.googleapis.com/v1/places:searchText'
+                => Http::sequence()
+                    ->push([
+                        'places' => [[
+                            'id' => 'plumber-1',
+                            'displayName' => [
+                                'text' => 'Alpha Plumbing',
+                            ],
+                        ]],
+                    ])
+                    ->push([
+                        'places' => [[
+                            'id' => 'drain-1',
+                            'displayName' => [
+                                'text' => 'Bravo Drain Service',
+                            ],
+                        ]],
+                    ]),
+        ]);
+
+        $results = app(
+            GooglePlacesService::class
+        )->searchBusinessesBatch([
+            [
+                'query' => 'Plumber',
+                'max_results' => 15,
+            ],
+            [
+                'query' => 'Drain Cleaning',
+                'max_results' => 15,
+            ],
+        ]);
+
+        $this->assertSame(
+            'plumber-1',
+            $results[0][0]['id']
+        );
+        $this->assertSame(
+            'drain-1',
+            $results[1][0]['id']
+        );
+        Http::assertSentCount(2);
+    }
+
+    public function test_batch_details_preserve_successful_peers_when_one_request_fails(): void
+    {
+        $this->configureGoogle();
+        Http::preventStrayRequests();
+
+        Http::fake([
+            'https://places.googleapis.com/v1/places/place-1'
+                => Http::response([
+                    'id' => 'place-1',
+                    'rating' => 4.8,
+                ]),
+            'https://places.googleapis.com/v1/places/place-2'
+                => Http::response([], 504),
+        ]);
+
+        $details = app(
+            GooglePlacesService::class
+        )->getPlaceDetailsBatch([
+            'place-1',
+            'place-2',
+        ]);
+
+        $this->assertSame(
+            4.8,
+            $details['place-1']['rating']
+        );
+        $this->assertArrayNotHasKey(
+            'place-2',
+            $details
+        );
+        Http::assertSentCount(2);
+    }
+
     private function configureGoogle(): void
     {
         config([

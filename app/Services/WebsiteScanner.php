@@ -18,6 +18,15 @@ class WebsiteScanner
     private const MAX_BODY_BYTES = 2_000_000;
     private const MAX_TEXT_LENGTH = 12_000;
 
+    private readonly AnalysisDeadline $analysisDeadline;
+
+    public function __construct(
+        ?AnalysisDeadline $analysisDeadline = null
+    ) {
+        $this->analysisDeadline = $analysisDeadline
+            ?? new AnalysisDeadline();
+    }
+
     public function scan(string $url): array
     {
         $currentUrl = $this->normalizeUrl($url);
@@ -26,12 +35,34 @@ class WebsiteScanner
             [$host, $port, $ip] = $this->validateAndResolve($currentUrl);
 
             try {
+                $requestTimeout = $this->analysisDeadline
+                    ->timeoutFor(
+                        max(
+                            0.5,
+                            (float) config(
+                                'analysis.website_timeout',
+                                8
+                            )
+                        )
+                    );
+
+                $connectTimeout = min(
+                    $requestTimeout,
+                    max(
+                        0.25,
+                        (float) config(
+                            'analysis.website_connect_timeout',
+                            2
+                        )
+                    )
+                );
+
                 $response = Http::withHeaders([
                     'User-Agent' => 'CompetitorAnalysisBot/1.0',
                     'Accept' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.1',
                 ])
-                    ->connectTimeout(5)
-                    ->timeout(12)
+                    ->connectTimeout($connectTimeout)
+                    ->timeout($requestTimeout)
                     ->withOptions([
                         'allow_redirects' => false,
                         'http_errors' => false,

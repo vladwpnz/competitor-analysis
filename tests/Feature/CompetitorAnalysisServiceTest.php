@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\AnalysisDeadlineExceeded;
 use App\Services\BusinessClassifier;
 use App\Services\BusinessIntelligenceService;
 use App\Services\BusinessProfileBuilder;
@@ -945,7 +946,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
     }
 
-    public function test_failed_digital_discovery_falls_back_to_existing_google_places_pipeline(): void
+    public function test_slow_gemini_competitor_discovery_falls_back_to_existing_google_places_pipeline(): void
     {
         $businessIntelligence = Mockery::mock(
             BusinessIntelligenceService::class
@@ -1010,8 +1011,8 @@ class CompetitorAnalysisServiceTest extends TestCase
             ->shouldReceive('discover')
             ->once()
             ->andThrow(
-                new \RuntimeException(
-                    'temporary provider failure'
+                new AnalysisDeadlineExceeded(
+                    'Gemini competitor discovery timed out.'
                 )
             );
 

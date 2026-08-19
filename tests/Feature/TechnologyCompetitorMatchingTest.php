@@ -202,25 +202,21 @@ class TechnologyCompetitorMatchingTest extends TestCase
         );
 
         $google
-            ->shouldReceive('searchBusinesses')
+            ->shouldReceive('searchBusinessesBatch')
             ->once()
-            ->with(
-                'CRM Software Company in USA',
-                15
-            )
+            ->with([[
+                'query' => 'CRM Software Company in USA',
+                'max_results' => 15,
+            ]])
             ->andReturn([
-                [
+                0 => [[
                     'id' => 'crm-us-1',
                     'displayName' => [
                         'text' => 'Example CRM Platform',
                     ],
                     'primaryType' => 'software_company',
-                ],
+                ]],
             ]);
-
-        $google->shouldNotReceive(
-            'searchBusinessesNear'
-        );
 
         $service = new CompetitorSearchService(
             $google

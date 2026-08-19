@@ -41,6 +41,14 @@ return [
             'GOOGLE_PLACES_BASE_URL',
             'https://places.googleapis.com/v1'
         ),
+        'connect_timeout' => (float) env(
+            'GOOGLE_PLACES_CONNECT_TIMEOUT',
+            2
+        ),
+        'timeout' => (float) env(
+            'GOOGLE_PLACES_TIMEOUT',
+            6
+        ),
     ],
 
 ];

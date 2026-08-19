@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\Log;
 use InvalidArgumentException;
+use RuntimeException;
 
 class CompetitorSearchService
 {
@@ -22,9 +24,14 @@ class CompetitorSearchService
 
     private const MAX_CANDIDATES = 50;
 
+    private readonly AnalysisDeadline $analysisDeadline;
+
     public function __construct(
-        private readonly GooglePlacesService $googlePlaces
+        private readonly GooglePlacesService $googlePlaces,
+        ?AnalysisDeadline $analysisDeadline = null
     ) {
+        $this->analysisDeadline = $analysisDeadline
+            ?? new AnalysisDeadline();
     }
 
     public function findCandidates(
@@ -75,14 +82,14 @@ class CompetitorSearchService
             'location.longitude'
         );
 
-        $pool = [];
+        if (! $this->hasProviderWindow()) {
+            return [];
+        }
+
+        $plans = [];
 
         foreach ($queries as $query) {
-            [
-                $places,
-                $searchMode,
-                $executedQuery,
-            ] = $this->executeSearch(
+            $plans[] = $this->planSearch(
                 $query,
                 $stage,
                 $marketScope,
@@ -90,6 +97,91 @@ class CompetitorSearchService
                 $longitude,
                 $searchProfile
             );
+        }
+
+        $requests = [];
+
+        foreach ($plans as $key => $plan) {
+            $requests[$key] = $plan['request'];
+        }
+
+        try {
+            $placesByPlan = $this->googlePlaces
+                ->searchBusinessesBatch(
+                    $requests
+                );
+        } catch (RuntimeException $exception) {
+            $this->logSearchFailure(
+                $stage,
+                $exception
+            );
+
+            return [];
+        }
+
+        /*
+         * A broader search uses country context to avoid server-location
+         * bias. Only try its unscoped fallback when the first concurrent
+         * batch did not already yield a usable shortlist.
+         */
+        if (
+            $this->usableCandidateCount(
+                $placesByPlan,
+                $searchProfile
+            ) < 5
+            && $this->hasProviderWindow()
+        ) {
+            $fallbackRequests = [];
+
+            foreach ($plans as $key => $plan) {
+                if (
+                    ($placesByPlan[$key] ?? []) !== []
+                    || ! is_array(
+                        $plan['fallback_request']
+                            ?? null
+                    )
+                ) {
+                    continue;
+                }
+
+                $fallbackRequests[$key]
+                    = $plan['fallback_request'];
+            }
+
+            if ($fallbackRequests !== []) {
+                try {
+                    $fallbackResults = $this->googlePlaces
+                        ->searchBusinessesBatch(
+                            $fallbackRequests
+                        );
+
+                    foreach ($fallbackResults as $key => $places) {
+                        if (! is_array($places)) {
+                            continue;
+                        }
+
+                        $placesByPlan[$key] = $places;
+                        $plans[$key]['search_mode']
+                            = $plans[$key]['fallback_mode'];
+                        $plans[$key]['executed_query']
+                            = $plans[$key]['fallback_query'];
+                    }
+                } catch (RuntimeException $exception) {
+                    $this->logSearchFailure(
+                        $stage,
+                        $exception
+                    );
+                }
+            }
+        }
+
+        $pool = [];
+
+        foreach ($plans as $key => $plan) {
+            $query = $plan['query'];
+            $searchMode = $plan['search_mode'];
+            $executedQuery = $plan['executed_query'];
+            $places = $placesByPlan[$key] ?? [];
 
             foreach ($places as $place) {
                 if (! is_array($place)) {
@@ -253,7 +345,7 @@ class CompetitorSearchService
         );
     }
 
-    private function executeSearch(
+    private function planSearch(
         string $query,
         string $stage,
         string $marketScope,
@@ -284,19 +376,21 @@ class CompetitorSearchService
             && $isLocalScope
             && $hasCoordinates
         ) {
-            $places = $this->googlePlaces
-                ->searchBusinessesNear(
-                    $query,
-                    (float) $latitude,
-                    (float) $longitude,
-                    50,
-                    self::RESULTS_PER_QUERY
-                );
-
             return [
-                $places,
-                'local_50km',
-                $query,
+                'query' => $query,
+                'request' => [
+                    'query' => $query,
+                    'max_results'
+                        => self::RESULTS_PER_QUERY,
+                    'latitude' => (float) $latitude,
+                    'longitude' => (float) $longitude,
+                    'radius_km' => 50,
+                ],
+                'search_mode' => 'local_50km',
+                'executed_query' => $query,
+                'fallback_request' => null,
+                'fallback_mode' => null,
+                'fallback_query' => null,
             ];
         }
 
@@ -326,31 +420,38 @@ class CompetitorSearchService
                     $countryContext
                 );
 
-                $places = $this->googlePlaces
-                    ->searchBusinesses(
-                        $executedQuery,
-                        self::RESULTS_PER_QUERY
-                    );
-
-                if ($places !== []) {
-                    return [
-                        $places,
-                        'broader_country_context',
-                        $executedQuery,
-                    ];
-                }
+                return [
+                    'query' => $query,
+                    'request' => [
+                        'query' => $executedQuery,
+                        'max_results'
+                            => self::RESULTS_PER_QUERY,
+                    ],
+                    'search_mode'
+                        => 'broader_country_context',
+                    'executed_query' => $executedQuery,
+                    'fallback_request' => [
+                        'query' => $query,
+                        'max_results'
+                            => self::RESULTS_PER_QUERY,
+                    ],
+                    'fallback_mode' => 'relevance',
+                    'fallback_query' => $query,
+                ];
             }
 
-            $places = $this->googlePlaces
-                ->searchBusinesses(
-                    $query,
-                    self::RESULTS_PER_QUERY
-                );
-
             return [
-                $places,
-                'relevance',
-                $query,
+                'query' => $query,
+                'request' => [
+                    'query' => $query,
+                    'max_results'
+                        => self::RESULTS_PER_QUERY,
+                ],
+                'search_mode' => 'relevance',
+                'executed_query' => $query,
+                'fallback_request' => null,
+                'fallback_mode' => null,
+                'fallback_query' => null,
             ];
         }
 
@@ -382,12 +483,6 @@ class CompetitorSearchService
                     $context
                 );
 
-            $places = $this->googlePlaces
-                ->searchBusinesses(
-                    $executedQuery,
-                    self::RESULTS_PER_QUERY
-                );
-
             $searchMode = match (
                 $effectiveStage
             ) {
@@ -405,9 +500,17 @@ class CompetitorSearchService
             };
 
             return [
-                $places,
-                $searchMode,
-                $executedQuery,
+                'query' => $query,
+                'request' => [
+                    'query' => $executedQuery,
+                    'max_results'
+                        => self::RESULTS_PER_QUERY,
+                ],
+                'search_mode' => $searchMode,
+                'executed_query' => $executedQuery,
+                'fallback_request' => null,
+                'fallback_mode' => null,
+                'fallback_query' => null,
             ];
         }
 
@@ -416,19 +519,82 @@ class CompetitorSearchService
          * address information, fall back to relevance
          * rather than constructing a fake location.
          */
-        $places = $this->googlePlaces
-            ->searchBusinesses(
-                $query,
-                self::RESULTS_PER_QUERY
-            );
-
         return [
-            $places,
-            $stage === self::STAGE_INITIAL
+            'query' => $query,
+            'request' => [
+                'query' => $query,
+                'max_results'
+                    => self::RESULTS_PER_QUERY,
+            ],
+            'search_mode' => $stage === self::STAGE_INITIAL
                 ? 'relevance'
                 : 'relevance_fallback',
-            $query,
+            'executed_query' => $query,
+            'fallback_request' => null,
+            'fallback_mode' => null,
+            'fallback_query' => null,
         ];
+    }
+
+    private function usableCandidateCount(
+        array $placesByPlan,
+        array $searchProfile
+    ): int {
+        $unique = [];
+
+        foreach ($placesByPlan as $places) {
+            if (! is_array($places)) {
+                continue;
+            }
+
+            foreach ($places as $place) {
+                if (
+                    ! is_array($place)
+                    || $this->isUnavailableBusiness($place)
+                    || $this->isExcludedBusiness(
+                        $place,
+                        $searchProfile
+                    )
+                ) {
+                    continue;
+                }
+
+                $key = $this->candidateKey($place);
+
+                if ($key !== null) {
+                    $unique[$key] = true;
+                }
+            }
+        }
+
+        return count($unique);
+    }
+
+    private function hasProviderWindow(): bool
+    {
+        return $this->analysisDeadline->canStart(
+            max(
+                0.5,
+                (float) config(
+                    'analysis.minimum_provider_window_seconds',
+                    1
+                )
+            )
+        );
+    }
+
+    private function logSearchFailure(
+        string $stage,
+        RuntimeException $exception
+    ): void {
+        Log::warning(
+            'Google Places competitor search was unavailable.',
+            [
+                'provider' => 'google_places',
+                'stage' => $stage,
+                'exception' => $exception::class,
+            ]
+        );
     }
 
     private function geographicContext(

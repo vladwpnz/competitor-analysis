@@ -9,6 +9,15 @@ use UnexpectedValueException;
 
 class GeminiCompetitorDiscoveryService
 {
+    private readonly AnalysisDeadline $analysisDeadline;
+
+    public function __construct(
+        ?AnalysisDeadline $analysisDeadline = null
+    ) {
+        $this->analysisDeadline = $analysisDeadline
+            ?? new AnalysisDeadline();
+    }
+
     private const MAX_COMPETITORS = 8;
 
     private const MAX_SEARCH_RESULTS = 6;
@@ -36,28 +45,19 @@ class GeminiCompetitorDiscoveryService
             );
         }
 
+        $requestTimeout = $this->discoveryRequestTimeout();
+        $connectTimeout = $this->connectTimeout(
+            $requestTimeout
+        );
+
         $response = Http::acceptJson()
             ->asJson()
             ->withHeaders([
                 'x-goog-api-key'
                     => $this->configString('api_key'),
             ])
-            ->connectTimeout(
-                $this->configInt(
-                    'connect_timeout',
-                    2,
-                    1,
-                    10
-                )
-            )
-            ->timeout(
-                $this->configInt(
-                    'discovery_timeout',
-                    12,
-                    3,
-                    30
-                )
-            )
+            ->connectTimeout($connectTimeout)
+            ->timeout($requestTimeout)
             ->post(
                 $this->configString('endpoint'),
                 $this->requestPayload(
@@ -170,28 +170,19 @@ class GeminiCompetitorDiscoveryService
             );
         }
 
+        $requestTimeout = $this->discoveryRequestTimeout();
+        $connectTimeout = $this->connectTimeout(
+            $requestTimeout
+        );
+
         $response = Http::acceptJson()
             ->asJson()
             ->withHeaders([
                 'x-goog-api-key'
                     => $this->configString('api_key'),
             ])
-            ->connectTimeout(
-                $this->configInt(
-                    'connect_timeout',
-                    2,
-                    1,
-                    10
-                )
-            )
-            ->timeout(
-                $this->configInt(
-                    'discovery_timeout',
-                    12,
-                    3,
-                    30
-                )
-            )
+            ->connectTimeout($connectTimeout)
+            ->timeout($requestTimeout)
             ->post(
                 $this->configString('endpoint'),
                 $this->manualSearchRequestPayload(
@@ -1113,6 +1104,38 @@ class GeminiCompetitorDiscoveryService
         return $value === ''
             ? null
             : $value;
+    }
+
+    private function discoveryRequestTimeout(): float
+    {
+        return $this->analysisDeadline
+            ->timeoutFor(
+                $this->configInt(
+                    'discovery_timeout',
+                    8,
+                    2,
+                    30
+                ),
+                0.5,
+                (float) config(
+                    'analysis.provider_fallback_reserve_seconds',
+                    6
+                )
+            );
+    }
+
+    private function connectTimeout(
+        float $requestTimeout
+    ): float {
+        return min(
+            $requestTimeout,
+            (float) $this->configInt(
+                'connect_timeout',
+                2,
+                1,
+                10
+            )
+        );
     }
 
     private function configInt(

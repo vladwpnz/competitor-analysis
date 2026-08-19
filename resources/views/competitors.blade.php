@@ -35,62 +35,76 @@
         'classification.discovery_mode'
     ) === 'digital_global';
     $hasAnalysis = is_array($analysisResult);
+
+    $marketScopeLabel = \Illuminate\Support\Str::headline(
+        (string) $marketScope
+    );
+
+    $businessTypeLabel = \Illuminate\Support\Str::headline(
+        (string) data_get(
+            $analysisResult,
+            'classification.business_type',
+            data_get($analysisResult, 'search_profile.business_type', 'Business')
+        )
+    );
+
+    $discoverySource = (string) data_get(
+        $analysisResult,
+        'discovery_source',
+        'google_places'
+    );
+
+    $discoverySourceLabel = match ($discoverySource) {
+        'ai_direct' => 'AI direct discovery',
+        'google_places_fallback' => 'Google Places fallback',
+        default => 'Google Places discovery',
+    };
+
+    $candidateCount = (int) data_get(
+        $analysisResult,
+        'candidate_count',
+        count($topCompetitors)
+    );
 @endphp
 
-<header class="site-header">
-    <div class="container header-inner">
-        <a href="{{ route('home') }}" class="brand" aria-label="Competitor Intelligence home">
-            <span class="brand-mark" aria-hidden="true">
-                <i></i><i></i><i></i><i></i>
-            </span>
-            <span class="brand-name">Competitor Intelligence</span>
-        </a>
+@include('partials.site-header', ['headerCtaLabel' => 'New analysis'])
 
-        <nav class="main-nav" aria-label="Primary navigation">
-            <a href="{{ route('home') }}#analysis-form">Analyze</a>
-            <a href="{{ route('home') }}#how-it-works">How it works</a>
-            <a href="{{ route('home') }}#capabilities">Capabilities</a>
-        </nav>
-
-        <div class="header-actions">
-            <a href="{{ route('home') }}#analysis-form" class="header-cta">
-                New analysis
-            </a>
-        </div>
-    </div>
-</header>
-
-<main class="competitors-page">
+<main id="main-content" class="competitors-page">
     <section class="competitors-hero">
         <div class="container competitors-container">
-            <div class="step-badge">STEP 2 OF 3</div>
+            <nav class="workflow-progress" aria-label="Analysis progress">
+                <ol>
+                    <li class="is-complete"><span>1</span>Business</li>
+                    <li class="is-current" aria-current="step"><span>2</span>Shortlist</li>
+                    <li><span>3</span>Contact</li>
+                </ol>
+            </nav>
 
             @if ($hasAnalysis)
-                <h1>
-                    We’ve Found
-                    <span id="competitor-count-heading">
-                        {{ count($topCompetitors) }}
-                    </span>
-                    Competitors
-                    <strong>You Might Be Up Against</strong>
-                </h1>
+                <div class="competitors-heading">
+                    <div>
+                        <p class="workspace-kicker">Analysis complete</p>
+                        <h1>Review the ranked shortlist.</h1>
+                        <p class="competitors-intro">
+                            Inspect why each business was ranked, then keep the competitors that belong in your final set.
+                        </p>
+                    </div>
 
-                <p class="competitors-intro">
-                    The analysis ranked these businesses as the strongest matches
-                    <br class="step2-desktop-break">
-                    for the same market and customer needs.
-                </p>
+                    <div class="shortlist-count" aria-label="Selected competitor count">
+                        <strong id="competitor-count-heading">{{ count($topCompetitors) }}</strong>
+                        <span>selected</span>
+                    </div>
+                </div>
             @else
-                <h1>
-                    We’re Preparing Your
-                    <strong>Most Relevant Competitors</strong>
-                </h1>
-
-                <p class="competitors-intro">
-                    Your business information has been received. We’ll use your
-                    website, Google Business data and market signals to find
-                    the most relevant competitors.
-                </p>
+                <div class="competitors-heading">
+                    <div>
+                        <p class="workspace-kicker">Analysis in progress</p>
+                        <h1>Preparing your shortlist.</h1>
+                        <p class="competitors-intro">
+                            The application is combining website, Google Business and market signals.
+                        </p>
+                    </div>
+                </div>
             @endif
 
             @error('competitors')
@@ -101,71 +115,51 @@
 
             <div class="step2-shell">
                 <section class="step2-business-section">
-                    <h2>Your Business Information</h2>
-
-                    <div class="step2-business-grid">
-                        <div class="step2-business-item">
-                            <span class="step2-business-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                    <circle cx="12" cy="12" r="8"></circle>
-                                    <path d="M4 12h16M12 4c2.3 2.2 3.5 4.9 3.5 8S14.3 17.8 12 20c-2.3-2.2-3.5-4.9-3.5-8S9.7 6.2 12 4Z"></path>
-                                </svg>
-                            </span>
-
-                            <div class="step2-business-copy">
-                                <span>Business Website</span>
-                                <strong title="{{ $website }}">
-                                    {{ $websiteDisplay }}
-                                </strong>
-                            </div>
-
-                            <a
-                                href="{{ route('home', ['edit' => 'website']) }}#analysis-form"
-                                class="step2-change-button"
-                            >
-                                Change
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 20h4l11-11-4-4L4 16v4Z"></path>
-                                    <path d="m13.5 6.5 4 4"></path>
-                                </svg>
+                    <div class="subject-heading">
+                        <div>
+                            <span>Business analyzed</span>
+                            <h2 title="{{ $googleBusiness }}">{{ $googleBusinessDisplay }}</h2>
+                            <a href="{{ $website }}" target="_blank" rel="noreferrer">
+                                {{ $websiteDisplay }}
+                                <span aria-hidden="true">↗</span>
                             </a>
                         </div>
 
-                        <div class="step2-business-item">
-                            <span class="step2-business-icon" aria-hidden="true">
-                                <svg viewBox="0 0 24 24">
-                                    <path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path>
-                                    <circle cx="12" cy="10" r="2"></circle>
-                                </svg>
-                            </span>
-
-                            <div class="step2-business-copy">
-                                <span>Google Business Profile</span>
-                                <strong title="{{ $googleBusiness }}">
-                                    {{ $googleBusinessDisplay }}
-                                </strong>
-                            </div>
-
-                            <a
-                                href="{{ route('home', ['edit' => 'google_business']) }}#analysis-form"
-                                class="step2-change-button"
-                            >
-                                Change
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="M4 20h4l11-11-4-4L4 16v4Z"></path>
-                                    <path d="m13.5 6.5 4 4"></path>
-                                </svg>
+                        <div class="subject-actions">
+                            <a href="{{ route('home', ['edit' => 'website']) }}#analysis-form">
+                                Edit website
+                            </a>
+                            <a href="{{ route('home', ['edit' => 'google_business']) }}#analysis-form">
+                                Edit Google profile
                             </a>
                         </div>
                     </div>
 
+                    <dl class="analysis-facts">
+                        <div>
+                            <dt>Business type</dt>
+                            <dd>{{ $businessTypeLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt>Market scope</dt>
+                            <dd>{{ $marketScopeLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt>Discovery path</dt>
+                            <dd>{{ $discoverySourceLabel }}</dd>
+                        </div>
+                        <div>
+                            <dt>Candidate pool</dt>
+                            <dd>{{ $candidateCount }}</dd>
+                        </div>
+                    </dl>
+
                     <div class="step2-info-note">
-                        <span aria-hidden="true">i</span>
                         <p>
                             @if (!empty($websiteScanWarning))
                                 {{ $websiteScanWarning }}
                             @else
-                                You can update your business information if anything is incorrect.
+                                Rankings use business type, services, query evidence and distance when geography matters.
                             @endif
                         </p>
                     </div>
@@ -174,20 +168,29 @@
                 <section class="step2-review-section">
                     <div class="step2-review-header">
                         <div>
-                            <h2>Review and Customize Your Competitors</h2>
+                            <h2>Ranked competitors</h2>
                             <p>
-                                Remove weak matches or add others before saving your selection.
+                                All listed businesses are selected. Remove a weak match or add a competitor you already know.
                             </p>
                         </div>
 
                         <button
                             type="button"
                             class="step2-add-button js-add-competitor"
+                            aria-haspopup="dialog"
+                            aria-controls="add-competitor-modal"
+                            aria-expanded="false"
                         >
-                            <span aria-hidden="true">＋</span>
-                            Add Competitor
+                            Add competitor
+                            <span aria-hidden="true">+</span>
                         </button>
                     </div>
+
+                    <div
+                        class="step2-operation-status"
+                        id="step2-operation-status"
+                        aria-live="polite"
+                    ></div>
 
                     @if ($hasAnalysis)
                         <div class="step2-competitor-list" id="step2-competitor-list">
@@ -443,6 +446,89 @@
                                         ? (float) $distanceKm * 0.621371
                                         : null;
 
+                                    $relevanceScore = data_get(
+                                        $competitor,
+                                        '_relevance.score'
+                                    );
+
+                                    $relevanceQuality = trim(
+                                        (string) data_get(
+                                            $competitor,
+                                            '_relevance.quality',
+                                            ''
+                                        )
+                                    );
+
+                                    $matchedQueries = data_get(
+                                        $competitor,
+                                        '_relevance.evidence.matched_queries',
+                                        data_get($competitor, '_match.queries', [])
+                                    );
+
+                                    $matchedQuery = collect(
+                                        is_array($matchedQueries)
+                                            ? $matchedQueries
+                                            : []
+                                    )
+                                        ->filter(
+                                            static fn (mixed $query): bool =>
+                                                is_string($query)
+                                                && trim($query) !== ''
+                                        )
+                                        ->map(
+                                            static fn (string $query): string =>
+                                                trim($query)
+                                        )
+                                        ->first();
+
+                                    $discoveryReason = trim(
+                                        (string) data_get(
+                                            $competitor,
+                                            '_discovery.reason',
+                                            ''
+                                        )
+                                    );
+
+                                    $isManualSelection = data_get(
+                                        $competitor,
+                                        '_manual_selection'
+                                    ) === true;
+
+                                    $matchEvidence = match (true) {
+                                        $discoveryReason !== '' => $discoveryReason,
+                                        is_string($matchedQuery) => 'Matched search: '.$matchedQuery,
+                                        $relevanceQuality !== '' =>
+                                            \Illuminate\Support\Str::headline($relevanceQuality)
+                                            .' relevance across available signals',
+                                        $isManualSelection =>
+                                            'Added manually to the shortlist',
+                                        default => 'Included from the current analysis',
+                                    };
+
+                                    $formattedAddress = trim(
+                                        (string) data_get(
+                                            $competitor,
+                                            'formattedAddress',
+                                            ''
+                                        )
+                                    );
+
+                                    $websiteHost = null;
+
+                                    if (
+                                        is_string($websiteUri)
+                                        && filter_var($websiteUri, FILTER_VALIDATE_URL)
+                                    ) {
+                                        $candidateHost = parse_url(
+                                            $websiteUri,
+                                            PHP_URL_HOST
+                                        );
+
+                                        if (is_string($candidateHost)) {
+                                            $websiteHost = $candidateHost;
+                                        }
+                                    }
+
                                     $initials = collect(
                                         preg_split('/\s+/', $name) ?: []
                                     )
@@ -462,7 +548,7 @@
                                 @endphp
 
                                 <article
-                                    class="step2-competitor-row"
+                                    class="step2-competitor-row {{ $index === 0 ? 'is-leading' : '' }}"
                                     data-competitor-row
                                     data-place-id="{{ $placeId }}"
                                 >
@@ -495,71 +581,91 @@
                                     </div>
 
                                     <div class="step2-competitor-main">
-                                        <h3>{{ $name }}</h3>
+                                        <div class="step2-competitor-title">
+                                            <h3>{{ $name }}</h3>
+                                        </div>
 
                                         <div class="step2-meta">
                                             <span>{{ $category }}</span>
                                         </div>
 
-                                        @if (!$isBroaderMarket)
-                                            <div class="step2-distance">
-                                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                                    <path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"></path>
-                                                    <circle cx="12" cy="10" r="2"></circle>
-                                                </svg>
+                                        <p class="step2-evidence">{{ $matchEvidence }}</p>
 
-                                                @if ($distanceMiles !== null)
-                                                    <span>
-                                                        {{ number_format($distanceMiles, 1) }}
-                                                        miles away
-                                                    </span>
-                                                @else
-                                                    <span>Location not available</span>
-                                                @endif
+                                        <div class="step2-context">
+                                            @if ($websiteHost && is_string($websiteUri))
+                                                <a href="{{ $websiteUri }}" target="_blank" rel="noreferrer">
+                                                    {{ $websiteHost }}
+                                                    <span aria-hidden="true">↗</span>
+                                                </a>
+                                            @endif
+
+                                            @if (!$isBroaderMarket)
+                                                <span>
+                                                    @if ($distanceMiles !== null)
+                                                        {{ number_format($distanceMiles, 1) }} miles away
+                                                    @elseif ($formattedAddress !== '')
+                                                        {{ $formattedAddress }}
+                                                    @else
+                                                        Location unavailable
+                                                    @endif
+                                                </span>
+                                            @endif
+                                        </div>
+                                    </div>
+
+                                    <div class="step2-score">
+                                        @if (is_numeric($relevanceScore))
+                                            <span>Relevance</span>
+                                            <div>
+                                                <strong>{{ number_format((float) $relevanceScore, 0) }}</strong>
+                                                <small>/ 100</small>
                                             </div>
+                                            <em>
+                                                {{ $relevanceQuality !== ''
+                                                    ? \Illuminate\Support\Str::headline($relevanceQuality).' relevance'
+                                                    : 'Ranked match' }}
+                                            </em>
+                                        @else
+                                            <span>Source</span>
+                                            <strong class="step2-score-manual">
+                                                {{ $isManualSelection ? 'Manual add' : 'Ranked' }}
+                                            </strong>
+                                            <em>Not rescored</em>
                                         @endif
                                     </div>
 
                                     <div class="step2-rating">
-                                        @if (is_numeric($rating))
-                                            <div class="step2-rating-line">
-                                                <strong>
-                                                    {{ number_format((float) $rating, 1) }}
-                                                </strong>
+                                        <span>Google rating</span>
 
-                                                <span
-                                                    class="step2-stars"
-                                                    style="--rating: {{ min(5, max(0, (float) $rating)) }}"
-                                                    aria-label="{{ number_format((float) $rating, 1) }} out of 5 stars"
-                                                >
-                                                    ★★★★★
-                                                </span>
-                                            </div>
+                                        @if (is_numeric($rating))
+                                            <strong>
+                                                {{ number_format((float) $rating, 1) }}
+                                                <small>/ 5</small>
+                                            </strong>
                                         @else
-                                            <div class="step2-rating-line">
-                                                <strong>—</strong>
-                                                <span class="step2-stars step2-stars-empty">
-                                                    ★★★★★
-                                                </span>
-                                            </div>
+                                            <strong class="is-unavailable">N/A</strong>
                                         @endif
 
                                         <span class="step2-review-count">
                                             @if (is_numeric($reviewCount))
-                                                ({{ number_format((int) $reviewCount) }} reviews)
+                                                {{ number_format((int) $reviewCount) }} reviews
                                             @else
-                                                (reviews unavailable)
+                                                Reviews unavailable
                                             @endif
                                         </span>
                                     </div>
 
-                                    <button
-                                        type="button"
-                                        class="step2-remove-button"
-                                        data-remove-competitor
-                                    >
-                                        Remove
-                                    </button>
+                                    <div class="step2-row-actions">
+                                        <span class="step2-selected-state">Selected</span>
+                                        <button
+                                            type="button"
+                                            class="step2-remove-button"
+                                            data-remove-competitor
+                                            aria-label="Remove {{ $name }} from shortlist"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
                                 </article>
                             @endforeach
                         </div>
@@ -570,19 +676,22 @@
                             @if (!empty($topCompetitors)) hidden @endif
                         >
                             <strong>No competitors selected yet.</strong>
-                            <span>Use “Add Competitor” to choose at least one business.</span>
+                            <span>Add at least one competitor to continue.</span>
                         </div>
 
                         <button
                             type="button"
                             class="step2-add-another js-add-competitor"
+                            aria-haspopup="dialog"
+                            aria-controls="add-competitor-modal"
+                            aria-expanded="false"
                         >
-                            <span class="step2-add-another-icon" aria-hidden="true">＋</span>
+                            <span class="step2-add-another-icon" aria-hidden="true">+</span>
                             <span class="step2-add-another-copy">
-                                <strong>Add Another Competitor</strong>
-                                <small>Search by business name or website</small>
+                                <strong>Add competitor</strong>
+                                <small>Search by company name or official website</small>
                             </span>
-                            <span class="step2-add-another-arrow" aria-hidden="true">›</span>
+                            <span class="step2-add-another-arrow" aria-hidden="true">↗</span>
                         </button>
 
                         <button
@@ -592,25 +701,13 @@
                             data-step3-url="{{ route('analysis.email') }}"
                             @disabled(empty($topCompetitors))
                         >
-                            <span>Continue</span>
-                            <span aria-hidden="true">→</span>
+                            <span>Continue to contact</span>
+                            <span aria-hidden="true">↗</span>
                         </button>
 
                         <div class="step2-trust">
-                            <span>
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <rect x="5" y="10" width="14" height="10" rx="2"></rect>
-                                    <path d="M8 10V7a4 4 0 0 1 8 0v3"></path>
-                                </svg>
-                                No account required
-                            </span>
-
-                            <span>
-                                <svg viewBox="0 0 24 24" aria-hidden="true">
-                                    <path d="m13 2-8 12h7l-1 8 8-12h-7l1-8Z"></path>
-                                </svg>
-                                Selection stays in this session
-                            </span>
+                            <span>No account required</span>
+                            <span>Selection stays in this session</span>
                         </div>
                     @else
                         <div class="step2-empty">
@@ -637,6 +734,8 @@
         role="dialog"
         aria-modal="true"
         aria-labelledby="add-competitor-title"
+        aria-describedby="add-competitor-description"
+        tabindex="-1"
     >
         <button
             type="button"
@@ -644,22 +743,23 @@
             id="add-competitor-close"
             aria-label="Close"
         >
-            ×
+            <span aria-hidden="true">×</span>
         </button>
 
-        <div class="step2-modal-kicker">CUSTOMIZE YOUR LIST</div>
-        <h2 id="add-competitor-title">Add a Competitor</h2>
-        <p>
+        <div class="step2-modal-kicker">Manual discovery</div>
+        <h2 id="add-competitor-title">Add competitor</h2>
+        <p id="add-competitor-description">
             {{ $isDigitalGlobal
                 ? 'Search direct competitors by company name or official domain.'
                 : 'Search Google by business name or website, then choose the correct business.' }}
         </p>
 
         <div class="step2-modal-search">
+            <label for="add-competitor-query">Company name or website</label>
             <input
                 id="add-competitor-query"
                 type="text"
-                placeholder="Business name or website"
+                placeholder="Search for a competitor"
                 autocomplete="off"
                 spellcheck="false"
             >
@@ -684,302 +784,14 @@
         ></div>
 
         <div class="step2-google-attribution">
-            {{ $isDigitalGlobal ? 'AI direct competitor search' : 'Google Maps' }}
+            Source: {{ $isDigitalGlobal ? 'AI direct competitor search' : 'Google Maps' }}
         </div>
     </section>
 </div>
 
-<footer class="site-footer">
-    <div class="container footer-grid">
-        <div class="footer-brand-column">
-            <a href="{{ route('home') }}" class="brand footer-brand">
-                <span class="brand-mark" aria-hidden="true">
-                    <i></i><i></i><i></i><i></i>
-                </span>
-                <span class="brand-name">Competitor Intelligence</span>
-            </a>
-
-            <p>
-                AI-assisted competitor discovery with deterministic fallbacks,
-                relevance scoring, and manual review.
-            </p>
-        </div>
-
-        <div class="footer-column">
-            <h3>Product</h3>
-            <a href="{{ route('home') }}#analysis-form">Analyze</a>
-            <a href="{{ route('home') }}#how-it-works">How it works</a>
-            <a href="{{ route('home') }}#capabilities">Capabilities</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Discovery</h3>
-            <a href="{{ route('home') }}#capabilities">Website scanning</a>
-            <a href="{{ route('home') }}#capabilities">Google Places</a>
-            <a href="{{ route('home') }}#capabilities">AI classification</a>
-        </div>
-
-        <div class="footer-column">
-            <h3>Quality</h3>
-            <a href="{{ route('home') }}#capabilities">Relevance scoring</a>
-            <a href="{{ route('home') }}#capabilities">Duplicate filtering</a>
-            <a href="{{ route('home') }}#capabilities">Manual refinement</a>
-        </div>
-    </div>
-
-    <div class="container footer-bottom">
-        <span>© {{ now()->year }} Competitor Intelligence.</span>
-        <div>
-            <span>Independent portfolio project</span>
-        </div>
-    </div>
-</footer>
+@include('partials.site-footer')
 
 
-<style>
-    .step2-page-error {
-        max-width: 980px;
-        margin: 18px auto 0;
-        padding: 13px 16px;
-        border: 1px solid rgba(180, 35, 24, 0.18);
-        border-radius: 12px;
-        background: #fff5f4;
-        color: #9d241b;
-        font-size: 14px;
-        font-weight: 600;
-    }
-
-    .step2-empty-selection {
-        display: grid;
-        gap: 4px;
-        margin-top: 14px;
-        padding: 22px;
-        border: 1px dashed rgba(93, 80, 120, 0.24);
-        border-radius: 16px;
-        text-align: center;
-        color: #6f687d;
-        background: rgba(250, 249, 252, 0.72);
-    }
-
-    .step2-empty-selection[hidden] {
-        display: none;
-    }
-
-    .step2-empty-selection strong {
-        color: #292236;
-        font-size: 15px;
-    }
-
-    .step2-add-button:disabled,
-    .step2-add-another:disabled,
-    .step2-start-button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-        transform: none !important;
-    }
-
-    .step2-modal-backdrop {
-        position: fixed;
-        inset: 0;
-        z-index: 1000;
-        display: grid;
-        place-items: center;
-        padding: 24px;
-        background: rgba(26, 20, 38, 0.48);
-        backdrop-filter: blur(5px);
-    }
-
-    .step2-modal-backdrop[hidden] {
-        display: none;
-    }
-
-    .step2-modal {
-        position: relative;
-        width: min(560px, 100%);
-        max-height: min(720px, calc(100vh - 48px));
-        overflow: auto;
-        padding: 32px;
-        border: 1px solid rgba(87, 72, 111, 0.12);
-        border-radius: 24px;
-        background: #ffffff;
-        box-shadow: 0 28px 80px rgba(30, 21, 48, 0.24);
-    }
-
-    .step2-modal-close {
-        position: absolute;
-        top: 18px;
-        right: 18px;
-        display: grid;
-        width: 36px;
-        height: 36px;
-        place-items: center;
-        border: 0;
-        border-radius: 50%;
-        background: #f4f1f7;
-        color: #51495e;
-        font-size: 24px;
-        line-height: 1;
-        cursor: pointer;
-    }
-
-    .step2-modal-kicker {
-        margin-bottom: 8px;
-        color: #7d5ac7;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: 0.14em;
-    }
-
-    .step2-modal h2 {
-        margin: 0;
-        color: #211a2c;
-        font-size: 28px;
-        line-height: 1.15;
-    }
-
-    .step2-modal > p {
-        margin: 10px 44px 22px 0;
-        color: #716a7e;
-        font-size: 14px;
-        line-height: 1.55;
-    }
-
-    .step2-modal-search {
-        position: relative;
-    }
-
-    .step2-modal-search input {
-        width: 100%;
-        min-height: 52px;
-        padding: 0 48px 0 16px;
-        border: 1px solid rgba(72, 58, 96, 0.18);
-        border-radius: 13px;
-        outline: none;
-        background: #fff;
-        color: #241d30;
-        font: inherit;
-    }
-
-    .step2-modal-search input:focus {
-        border-color: rgba(125, 90, 199, 0.64);
-        box-shadow: 0 0 0 4px rgba(125, 90, 199, 0.09);
-    }
-
-    .step2-modal-loader {
-        position: absolute;
-        top: 50%;
-        right: 17px;
-        width: 18px;
-        height: 18px;
-        margin-top: -9px;
-        border: 2px solid rgba(125, 90, 199, 0.18);
-        border-top-color: #7d5ac7;
-        border-radius: 50%;
-        opacity: 0;
-        animation: step2-spin 0.75s linear infinite;
-    }
-
-    .step2-modal-loader.is-visible {
-        opacity: 1;
-    }
-
-    @keyframes step2-spin {
-        to {
-            transform: rotate(360deg);
-        }
-    }
-
-    .step2-modal-status {
-        min-height: 20px;
-        margin: 8px 2px 4px;
-        color: #716a7e;
-        font-size: 12px;
-    }
-
-    .step2-modal-status.is-error {
-        color: #b42318;
-    }
-
-    .step2-modal-results {
-        overflow: hidden;
-        margin-top: 8px;
-        border: 1px solid rgba(72, 58, 96, 0.12);
-        border-radius: 14px;
-        background: #fff;
-    }
-
-    .step2-modal-results[hidden] {
-        display: none;
-    }
-
-    .step2-modal-result {
-        display: block;
-        width: 100%;
-        padding: 13px 15px;
-        border: 0;
-        border-bottom: 1px solid rgba(72, 58, 96, 0.08);
-        background: #fff;
-        text-align: left;
-        cursor: pointer;
-    }
-
-    .step2-modal-result:last-child {
-        border-bottom: 0;
-    }
-
-    .step2-modal-result:hover,
-    .step2-modal-result:focus {
-        background: #f8f6fb;
-        outline: none;
-    }
-
-    .step2-modal-result strong,
-    .step2-modal-result span {
-        display: block;
-    }
-
-    .step2-modal-result strong {
-        color: #292236;
-        font-size: 14px;
-    }
-
-    .step2-modal-result span {
-        margin-top: 3px;
-        color: #777286;
-        font-size: 12px;
-        line-height: 1.4;
-    }
-
-    .step2-google-attribution {
-        margin-top: 10px;
-        text-align: right;
-        color: #68616f;
-        font-family: Roboto, Arial, sans-serif;
-        font-size: 11px;
-    }
-
-    body.step2-modal-open {
-        overflow: hidden;
-    }
-
-    @media (max-width: 640px) {
-        .step2-modal-backdrop {
-            padding: 14px;
-            align-items: end;
-        }
-
-        .step2-modal {
-            width: 100%;
-            max-height: 86vh;
-            padding: 26px 20px 22px;
-            border-radius: 22px 22px 12px 12px;
-        }
-
-        .step2-modal h2 {
-            font-size: 24px;
-        }
-    }
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', () => {
@@ -987,13 +799,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const countHeading = document.getElementById('competitor-count-heading');
     const emptySelection = document.getElementById('step2-empty-selection');
     const startButton = document.getElementById('step2-start-button');
+    const operationStatus = document.getElementById('step2-operation-status');
 
     const modal = document.getElementById('add-competitor-modal');
+    const modalPanel = modal?.querySelector('.step2-modal');
     const modalClose = document.getElementById('add-competitor-close');
     const queryInput = document.getElementById('add-competitor-query');
     const resultsBox = document.getElementById('add-competitor-results');
     const statusBox = document.getElementById('add-competitor-status');
     const loader = document.getElementById('add-competitor-loader');
+    const addButtons = Array.from(
+        document.querySelectorAll('.js-add-competitor')
+    );
 
     const searchEndpoint = @json(route('competitors.search'));
     const addEndpoint = @json(route('competitors.add'));
@@ -1003,6 +820,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let debounceTimer = null;
     let requestController = null;
     let addingPlaceId = null;
+    let lastAddTrigger = null;
 
     const rows = () => {
         if (!list) {
@@ -1018,6 +836,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const competitorRows = rows();
 
         competitorRows.forEach((row, index) => {
+            row.classList.toggle(
+                'is-leading',
+                index === 0
+            );
+
             const rank = row.querySelector('[data-competitor-rank]');
 
             if (rank) {
@@ -1056,6 +879,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    const setOperationStatus = (
+        message = '',
+        isError = false
+    ) => {
+        if (!operationStatus) {
+            return;
+        }
+
+        operationStatus.textContent = message;
+        operationStatus.classList.toggle(
+            'is-error',
+            isError
+        );
+    };
+
     const setModalStatus = (
         message = '',
         isError = false
@@ -1089,18 +927,27 @@ document.addEventListener('DOMContentLoaded', () => {
         resultsBox.hidden = true;
     };
 
-    const openModal = () => {
+    const openModal = (trigger = null) => {
         if (!modal || !queryInput) {
             return;
         }
 
+        lastAddTrigger = trigger;
         clearResults();
         setModalStatus('');
+        setOperationStatus('');
         queryInput.value = '';
         modal.hidden = false;
         document.body.classList.add(
             'step2-modal-open'
         );
+
+        addButtons.forEach(button => {
+            button.setAttribute(
+                'aria-expanded',
+                'true'
+            );
+        });
 
         window.setTimeout(
             () => queryInput.focus(),
@@ -1126,6 +973,18 @@ document.addEventListener('DOMContentLoaded', () => {
         document.body.classList.remove(
             'step2-modal-open'
         );
+
+        addButtons.forEach(button => {
+            button.setAttribute(
+                'aria-expanded',
+                'false'
+            );
+        });
+
+        if (lastAddTrigger) {
+            lastAddTrigger.focus();
+            lastAddTrigger = null;
+        }
     };
 
     const initialsFromName = (name) => {
@@ -1184,10 +1043,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const main = document.createElement('div');
         main.className = 'step2-competitor-main';
 
+        const title = document.createElement('div');
+        title.className = 'step2-competitor-title';
+
         const heading = document.createElement('h3');
         heading.textContent =
             competitor.name || 'Competitor';
-        main.appendChild(heading);
+        title.appendChild(heading);
+        main.appendChild(title);
 
         const meta = document.createElement('div');
         meta.className = 'step2-meta';
@@ -1198,68 +1061,119 @@ document.addEventListener('DOMContentLoaded', () => {
         meta.appendChild(category);
         main.appendChild(meta);
 
+        const evidence = document.createElement('p');
+        evidence.className = 'step2-evidence';
+        evidence.textContent =
+            competitor.evidence
+            || (
+                competitor.is_manual
+                    ? 'Added manually to the shortlist'
+                    : 'Included from the current analysis'
+            );
+        main.appendChild(evidence);
+
+        const context = document.createElement('div');
+        context.className = 'step2-context';
+
+        if (
+            competitor.website_url
+            && competitor.website_host
+        ) {
+            const website = document.createElement('a');
+            website.href = competitor.website_url;
+            website.target = '_blank';
+            website.rel = 'noreferrer';
+            website.textContent =
+                competitor.website_host + ' ↗';
+            context.appendChild(website);
+        }
+
         if (competitor.show_distance) {
-            const distance = document.createElement('div');
-            distance.className = 'step2-distance';
+            const location = document.createElement('span');
 
-            const icon = document.createElementNS(
-                'http://www.w3.org/2000/svg',
-                'svg'
-            );
-            icon.setAttribute('viewBox', '0 0 24 24');
-
-            const path = document.createElementNS(
-                'http://www.w3.org/2000/svg',
-                'path'
-            );
-            path.setAttribute(
-                'd',
-                'M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z'
-            );
-
-            const circle = document.createElementNS(
-                'http://www.w3.org/2000/svg',
-                'circle'
-            );
-            circle.setAttribute('cx', '12');
-            circle.setAttribute('cy', '10');
-            circle.setAttribute('r', '2');
-
-            icon.append(path, circle);
-            distance.appendChild(icon);
-
-            const distanceText =
-                document.createElement('span');
-
-            distanceText.textContent =
+            location.textContent =
                 competitor.distance_miles !== null
                 && competitor.distance_miles !== undefined
                     ? Number(
                         competitor.distance_miles
                     ).toFixed(1)
                         + ' miles away'
-                    : 'Location not available';
+                    : (
+                        competitor.formatted_address
+                        || 'Location unavailable'
+                    );
 
-            distance.appendChild(distanceText);
-            main.appendChild(distance);
+            context.appendChild(location);
+        }
+
+        if (context.childElementCount > 0) {
+            main.appendChild(context);
         }
 
         row.appendChild(main);
 
+        const score = document.createElement('div');
+        score.className = 'step2-score';
+
+        const scoreLabel = document.createElement('span');
+        scoreLabel.textContent =
+            competitor.relevance_score !== null
+            && competitor.relevance_score !== undefined
+                ? 'Relevance'
+                : 'Source';
+        score.appendChild(scoreLabel);
+
+        if (
+            competitor.relevance_score !== null
+            && competitor.relevance_score !== undefined
+        ) {
+            const scoreLine = document.createElement('div');
+            const scoreValue = document.createElement('strong');
+            scoreValue.textContent = String(
+                Math.round(
+                    Number(competitor.relevance_score)
+                )
+            );
+
+            const scoreScale = document.createElement('small');
+            scoreScale.textContent = '/ 100';
+
+            scoreLine.append(scoreValue, scoreScale);
+            score.appendChild(scoreLine);
+
+            const scoreQuality = document.createElement('em');
+            scoreQuality.textContent =
+                competitor.relevance_quality
+                    ? competitor.relevance_quality
+                        .replace(/_/g, ' ')
+                        + ' relevance'
+                    : 'Ranked match';
+            score.appendChild(scoreQuality);
+        } else {
+            const manual = document.createElement('strong');
+            manual.className = 'step2-score-manual';
+            manual.textContent =
+                competitor.is_manual
+                    ? 'Manual add'
+                    : 'Ranked';
+            score.appendChild(manual);
+
+            const scoreNote = document.createElement('em');
+            scoreNote.textContent = 'Not rescored';
+            score.appendChild(scoreNote);
+        }
+
+        row.appendChild(score);
+
         const rating = document.createElement('div');
         rating.className = 'step2-rating';
 
-        const ratingLine =
-            document.createElement('div');
-        ratingLine.className = 'step2-rating-line';
+        const ratingLabel = document.createElement('span');
+        ratingLabel.textContent = 'Google rating';
+        rating.appendChild(ratingLabel);
 
         const ratingValue =
             document.createElement('strong');
-
-        const stars =
-            document.createElement('span');
-        stars.className = 'step2-stars';
-        stars.textContent = '★★★★★';
 
         if (
             competitor.rating !== null
@@ -1272,33 +1186,16 @@ document.addEventListener('DOMContentLoaded', () => {
             ratingValue.textContent =
                 numericRating.toFixed(1);
 
-            stars.style.setProperty(
-                '--rating',
-                String(
-                    Math.min(
-                        5,
-                        Math.max(0, numericRating)
-                    )
-                )
-            );
-
-            stars.setAttribute(
-                'aria-label',
-                numericRating.toFixed(1)
-                    + ' out of 5 stars'
-            );
+            const ratingScale =
+                document.createElement('small');
+            ratingScale.textContent = '/ 5';
+            ratingValue.appendChild(ratingScale);
         } else {
-            ratingValue.textContent = '—';
-            stars.classList.add(
-                'step2-stars-empty'
-            );
+            ratingValue.textContent = 'N/A';
+            ratingValue.className = 'is-unavailable';
         }
 
-        ratingLine.append(
-            ratingValue,
-            stars
-        );
-        rating.appendChild(ratingLine);
+        rating.appendChild(ratingValue);
 
         const reviewCount =
             document.createElement('span');
@@ -1308,15 +1205,22 @@ document.addEventListener('DOMContentLoaded', () => {
         reviewCount.textContent =
             competitor.review_count !== null
             && competitor.review_count !== undefined
-                ? '('
-                    + Number(
-                        competitor.review_count
-                    ).toLocaleString()
-                    + ' reviews)'
-                : '(reviews unavailable)';
+                ? Number(
+                    competitor.review_count
+                ).toLocaleString()
+                    + ' reviews'
+                : 'Reviews unavailable';
 
         rating.appendChild(reviewCount);
         row.appendChild(rating);
+
+        const actions = document.createElement('div');
+        actions.className = 'step2-row-actions';
+
+        const selected = document.createElement('span');
+        selected.className = 'step2-selected-state';
+        selected.textContent = 'Selected';
+        actions.appendChild(selected);
 
         const remove =
             document.createElement('button');
@@ -1325,11 +1229,17 @@ document.addEventListener('DOMContentLoaded', () => {
             'step2-remove-button';
         remove.dataset.removeCompetitor = '';
         remove.textContent = 'Remove';
-        row.appendChild(remove);
+        remove.setAttribute(
+            'aria-label',
+            'Remove '
+                + (competitor.name || 'competitor')
+                + ' from shortlist'
+        );
+        actions.appendChild(remove);
+        row.appendChild(actions);
 
         return row;
     };
-
     const renderSearchResults = (suggestions) => {
         if (!resultsBox) {
             return;
@@ -1376,7 +1286,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     document.createElement('span');
 
                 secondary.textContent =
-                    secondaryParts.join(' · ');
+                    secondaryParts.join(', ');
 
                 button.appendChild(secondary);
             }
@@ -1514,6 +1424,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             syncState();
             closeModal();
+            setOperationStatus(
+                data.message
+                || 'Competitor added to the shortlist.'
+            );
         } catch (error) {
             setModalStatus(
                 error.message
@@ -1584,12 +1498,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     row.remove();
                     syncState();
+                    setOperationStatus(
+                        data.message
+                        || 'Competitor removed from the shortlist.'
+                    );
                 } catch (error) {
                     button.disabled = false;
-                    window.alert(
+                    setOperationStatus(
                         error.message
-                        || 'Could not remove that competitor.'
+                        || 'Could not remove that competitor.',
+                        true
                     );
+
+                    button.focus();
                 }
             }
         );
@@ -1602,7 +1523,7 @@ document.addEventListener('DOMContentLoaded', () => {
             'click',
             () => {
                 if (!button.disabled) {
-                    openModal();
+                    openModal(button);
                 }
             }
         );
@@ -1635,6 +1556,44 @@ document.addEventListener('DOMContentLoaded', () => {
                 && !modal.hidden
             ) {
                 closeModal();
+
+                return;
+            }
+
+            if (
+                event.key === 'Tab'
+                && modal
+                && modalPanel
+                && !modal.hidden
+            ) {
+                const focusable = Array.from(
+                    modalPanel.querySelectorAll(
+                        'button:not([disabled]), input:not([disabled])'
+                    )
+                );
+
+                if (focusable.length === 0) {
+                    return;
+                }
+
+                const first = focusable[0];
+                const last = focusable[
+                    focusable.length - 1
+                ];
+
+                if (
+                    event.shiftKey
+                    && document.activeElement === first
+                ) {
+                    event.preventDefault();
+                    last.focus();
+                } else if (
+                    !event.shiftKey
+                    && document.activeElement === last
+                ) {
+                    event.preventDefault();
+                    first.focus();
+                }
             }
         }
     );

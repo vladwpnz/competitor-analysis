@@ -41,15 +41,34 @@ class BusinessIntelligenceService
         'low',
     ];
 
+    private readonly AnalysisDeadline $analysisDeadline;
+
     public function __construct(
         private readonly BusinessClassifier $fallbackClassifier,
-        private readonly AiBusinessClassifierManager $aiManager
+        private readonly AiBusinessClassifierManager $aiManager,
+        ?AnalysisDeadline $analysisDeadline = null
     ) {
+        $this->analysisDeadline = $analysisDeadline
+            ?? new AnalysisDeadline();
     }
 
     public function classify(
         array $businessProfile
     ): array {
+        if (
+            ! $this->analysisDeadline->canStart(
+                (float) config(
+                    'analysis.minimum_provider_window_seconds',
+                    1
+                )
+            )
+        ) {
+            return $this->fallbackClassifier
+                ->classify(
+                    $businessProfile
+                );
+        }
+
         $provider = $this->aiManager->driver();
 
         if (

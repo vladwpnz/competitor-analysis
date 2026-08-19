@@ -47,7 +47,7 @@ return [
 
         'timeout' => (int) env(
             'GEMINI_TIMEOUT',
-            8
+            6
         ),
 
         /*
@@ -57,7 +57,7 @@ return [
          */
         'discovery_timeout' => (int) env(
             'GEMINI_DISCOVERY_TIMEOUT',
-            12
+            8
         ),
 
         'discovery_max_output_tokens' => (int) env(

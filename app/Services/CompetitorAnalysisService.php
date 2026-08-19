@@ -11,14 +11,19 @@ class CompetitorAnalysisService
 
     private const CANDIDATES_PER_STAGE = 30;
 
+    private readonly AnalysisDeadline $analysisDeadline;
+
     public function __construct(
         private readonly BusinessProfileBuilder $businessProfileBuilder,
         private readonly BusinessClassifier $businessClassifier,
         private readonly SearchProfileBuilder $searchProfileBuilder,
         private readonly CompetitorSearchService $competitorSearchService,
         private readonly CompetitorRelevanceScorer $relevanceScorer,
-        private readonly CompetitorEnrichmentService $competitorEnrichmentService
+        private readonly CompetitorEnrichmentService $competitorEnrichmentService,
+        ?AnalysisDeadline $analysisDeadline = null
     ) {
+        $this->analysisDeadline = $analysisDeadline
+            ?? new AnalysisDeadline();
     }
 
     public function analyze(
@@ -87,6 +92,10 @@ class CompetitorAnalysisService
         );
 
         foreach ($plannedStages as $stage) {
+            if (! $this->hasProviderWindow()) {
+                break;
+            }
+
             $stageCandidates = $this->competitorSearchService
                 ->findCandidates(
                     $searchProfile,
@@ -125,9 +134,11 @@ class CompetitorAnalysisService
             }
         }
 
-        $topCompetitors = $this->competitorEnrichmentService->enrich(
-            $topCompetitors
-        );
+        if ($this->hasProviderWindow()) {
+            $topCompetitors = $this->competitorEnrichmentService->enrich(
+                $topCompetitors
+            );
+        }
 
         return [
             'business_profile' => $businessProfile,
@@ -187,6 +198,10 @@ class CompetitorAnalysisService
         );
 
         if (! $discovery->isConfigured()) {
+            return null;
+        }
+
+        if (! $this->hasProviderWindow()) {
             return null;
         }
 
@@ -996,6 +1011,16 @@ class CompetitorAnalysisService
                         '_relevance.strong_match',
                         false
                     )
+            )
+        );
+    }
+
+    private function hasProviderWindow(): bool
+    {
+        return $this->analysisDeadline->canStart(
+            (float) config(
+                'analysis.minimum_provider_window_seconds',
+                1
             )
         );
     }

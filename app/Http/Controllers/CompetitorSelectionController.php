@@ -1032,6 +1032,8 @@ class CompetitorSelectionController extends Controller
         );
 
         $faviconUrl = null;
+        $websiteHost = null;
+        $validWebsiteUri = null;
 
         if (
             is_string($websiteUri)
@@ -1040,6 +1042,8 @@ class CompetitorSelectionController extends Controller
                 FILTER_VALIDATE_URL
             )
         ) {
+            $validWebsiteUri = $websiteUri;
+
             $parts = parse_url(
                 $websiteUri
             );
@@ -1051,6 +1055,8 @@ class CompetitorSelectionController extends Controller
                     $parts['host']
                 )
             ) {
+                $websiteHost = $parts['host'];
+
                 $faviconUrl =
                     $parts['scheme']
                     . '://'
@@ -1095,6 +1101,70 @@ class CompetitorSelectionController extends Controller
             $competitor,
             '_match.distance_km'
         );
+
+        $relevanceScore = data_get(
+            $competitor,
+            '_relevance.score'
+        );
+
+        $relevanceQuality = trim(
+            (string) data_get(
+                $competitor,
+                '_relevance.quality',
+                ''
+            )
+        );
+
+        $matchedQueries = data_get(
+            $competitor,
+            '_relevance.evidence.matched_queries',
+            data_get(
+                $competitor,
+                '_match.queries',
+                []
+            )
+        );
+
+        $matchedQuery = collect(
+            is_array($matchedQueries)
+                ? $matchedQueries
+                : []
+        )
+            ->filter(
+                static fn (mixed $query): bool =>
+                    is_string($query)
+                    && trim($query) !== ''
+            )
+            ->map(
+                static fn (string $query): string =>
+                    trim($query)
+            )
+            ->first();
+
+        $discoveryReason = trim(
+            (string) data_get(
+                $competitor,
+                '_discovery.reason',
+                ''
+            )
+        );
+
+        $isManualSelection = data_get(
+            $competitor,
+            '_manual_selection'
+        ) === true;
+
+        $evidence = match (true) {
+            $discoveryReason !== '' => $discoveryReason,
+            is_string($matchedQuery) =>
+                'Matched search: '.$matchedQuery,
+            $relevanceQuality !== '' =>
+                Str::headline($relevanceQuality)
+                .' relevance across available signals',
+            $isManualSelection =>
+                'Added manually to the shortlist',
+            default => 'Included from the current analysis',
+        };
 
         return [
             'place_id'
@@ -1141,6 +1211,30 @@ class CompetitorSelectionController extends Controller
                         : null,
             'show_distance'
                 => $marketScope !== 'broader',
+            'formatted_address'
+                => trim(
+                    (string) data_get(
+                        $competitor,
+                        'formattedAddress',
+                        ''
+                    )
+                ),
+            'website_url'
+                => $validWebsiteUri,
+            'website_host'
+                => $websiteHost,
+            'relevance_score'
+                => is_numeric($relevanceScore)
+                    ? (float) $relevanceScore
+                    : null,
+            'relevance_quality'
+                => $relevanceQuality !== ''
+                    ? $relevanceQuality
+                    : null,
+            'evidence'
+                => $evidence,
+            'is_manual'
+                => $isManualSelection,
             'favicon_url'
                 => $faviconUrl,
             'initials'

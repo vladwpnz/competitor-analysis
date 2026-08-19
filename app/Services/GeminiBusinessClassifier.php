@@ -16,6 +16,15 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
 
     private const MAX_GOOGLE_TYPES = 12;
 
+    private readonly AnalysisDeadline $analysisDeadline;
+
+    public function __construct(
+        ?AnalysisDeadline $analysisDeadline = null
+    ) {
+        $this->analysisDeadline = $analysisDeadline
+            ?? new AnalysisDeadline();
+    }
+
     public function name(): string
     {
         return 'gemini';
@@ -42,28 +51,39 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
             );
         }
 
+        $requestTimeout = $this->analysisDeadline
+            ->timeoutFor(
+                $this->configInt(
+                    'timeout',
+                    6,
+                    2,
+                    20
+                ),
+                0.5,
+                (float) config(
+                    'analysis.provider_fallback_reserve_seconds',
+                    6
+                )
+            );
+
+        $connectTimeout = min(
+            $requestTimeout,
+            (float) $this->configInt(
+                'connect_timeout',
+                2,
+                1,
+                10
+            )
+        );
+
         $response = Http::acceptJson()
             ->asJson()
             ->withHeaders([
                 'x-goog-api-key'
                     => $this->configString('api_key'),
             ])
-            ->connectTimeout(
-                $this->configInt(
-                    'connect_timeout',
-                    2,
-                    1,
-                    10
-                )
-            )
-            ->timeout(
-                $this->configInt(
-                    'timeout',
-                    8,
-                    2,
-                    20
-                )
-            )
+            ->connectTimeout($connectTimeout)
+            ->timeout($requestTimeout)
             ->post(
                 $this->configString('endpoint'),
                 $this->requestPayload(

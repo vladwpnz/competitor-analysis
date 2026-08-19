@@ -160,7 +160,9 @@ GEMINI_API_KEY=
 GEMINI_MODEL=gemini-3.6-flash
 ```
 
-The example environment file also documents optional timeout and output-limit controls for Gemini. Keep API keys in the local `.env` file or a deployment secret manager.
+The example environment file also documents the synchronous analysis budget,
+provider timeouts, and Gemini output limits. Keep API keys in the local `.env`
+file or a deployment secret manager.
 
 ## Tests and checks
 

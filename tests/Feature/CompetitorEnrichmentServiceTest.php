@@ -2,10 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Exceptions\AnalysisDeadlineExceeded;
 use App\Services\CompetitorEnrichmentService;
 use App\Services\GooglePlacesService;
 use Mockery;
-use RuntimeException;
 use Tests\TestCase;
 
 class CompetitorEnrichmentServiceTest extends TestCase
@@ -20,37 +20,43 @@ class CompetitorEnrichmentServiceTest extends TestCase
             ->once()
             ->andReturn(true);
 
-        $google->shouldReceive('getPlaceDetails')
-            ->times(5)
+        $google->shouldReceive('getPlaceDetailsBatch')
+            ->once()
             ->andReturnUsing(
-                function (string $placeId): array {
-                    return [
-                        'id' => $placeId,
+                function (array $placeIds): array {
+                    $details = [];
 
-                        'displayName' => [
-                            'text' => 'Detailed ' . $placeId,
-                        ],
+                    foreach ($placeIds as $placeId) {
+                        $details[$placeId] = [
+                            'id' => $placeId,
 
-                        'formattedAddress'
-                            => '100 Example St, Toronto, ON, Canada',
+                            'displayName' => [
+                                'text' => 'Detailed ' . $placeId,
+                            ],
 
-                        'primaryType'
-                            => 'plumber',
+                            'formattedAddress'
+                                => '100 Example St, Toronto, ON, Canada',
 
-                        'primaryTypeDisplayName' => [
-                            'text' => 'Plumber',
-                        ],
+                            'primaryType'
+                                => 'plumber',
 
-                        'websiteUri'
-                            => 'https://' . $placeId . '.example.com',
+                            'primaryTypeDisplayName' => [
+                                'text' => 'Plumber',
+                            ],
 
-                        'googleMapsUri'
-                            => 'https://maps.google.com/?cid=' . $placeId,
+                            'websiteUri'
+                                => 'https://' . $placeId . '.example.com',
 
-                        'rating' => 4.8,
+                            'googleMapsUri'
+                                => 'https://maps.google.com/?cid=' . $placeId,
 
-                        'userRatingCount' => 120,
-                    ];
+                            'rating' => 4.8,
+
+                            'userRatingCount' => 120,
+                        ];
+                    }
+
+                    return $details;
                 }
             );
 
@@ -124,7 +130,7 @@ class CompetitorEnrichmentServiceTest extends TestCase
         );
     }
 
-    public function test_it_keeps_existing_candidate_data_when_place_details_fail(): void
+    public function test_it_keeps_existing_candidate_data_when_place_details_time_out(): void
     {
         $google = Mockery::mock(
             GooglePlacesService::class
@@ -134,12 +140,12 @@ class CompetitorEnrichmentServiceTest extends TestCase
             ->once()
             ->andReturn(true);
 
-        $google->shouldReceive('getPlaceDetails')
+        $google->shouldReceive('getPlaceDetailsBatch')
             ->once()
-            ->with('competitor-1')
+            ->with(['competitor-1'])
             ->andThrow(
-                new RuntimeException(
-                    'Temporary Places API failure.'
+                new AnalysisDeadlineExceeded(
+                    'The analysis time budget was exhausted.'
                 )
             );
 
