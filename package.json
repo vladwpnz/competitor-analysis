@@ -1,4 +1,5 @@
 {
+    "name": "account-intelligence",
     "private": true,
     "type": "module",
     "scripts": {

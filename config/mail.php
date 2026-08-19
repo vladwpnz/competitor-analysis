@@ -110,7 +110,7 @@ return [
 
     'from' => [
         'address' => env('MAIL_FROM_ADDRESS', 'hello@example.com'),
-        'name' => env('MAIL_FROM_NAME', 'Competitor Intelligence'),
+        'name' => env('MAIL_FROM_NAME', 'Account Intelligence'),
     ],
 
 ];

@@ -242,7 +242,7 @@ class AnalysisFlowTest extends TestCase
             );
 
         $response->assertRedirect(
-            route('competitors')
+            route('accounts')
         );
 
         $response->assertSessionHas(
@@ -292,7 +292,7 @@ class AnalysisFlowTest extends TestCase
         $page =
             $this->get(
                 route(
-                    'competitors'
+                    'accounts'
                 )
             );
 
@@ -545,7 +545,7 @@ class AnalysisFlowTest extends TestCase
         );
 
         $response->assertRedirect(
-            route('competitors')
+            route('accounts')
         );
 
         $response->assertSessionHasNoErrors();
@@ -679,7 +679,7 @@ class AnalysisFlowTest extends TestCase
         );
 
         $response->assertRedirect(
-            route('competitors')
+            route('accounts')
         );
 
         $response->assertSessionHasNoErrors();
@@ -1033,7 +1033,7 @@ class AnalysisFlowTest extends TestCase
             );
 
         $response->assertRedirect(
-            route('competitors')
+            route('accounts')
         );
 
         $response->assertSessionHas(
@@ -1080,7 +1080,7 @@ class AnalysisFlowTest extends TestCase
         $page =
             $this->get(
                 route(
-                    'competitors'
+                    'accounts'
                 )
             );
 
@@ -1507,7 +1507,7 @@ class AnalysisFlowTest extends TestCase
             );
 
         $response->assertRedirect(
-            route('competitors')
+            route('accounts')
         );
 
         $response->assertSessionHas(
@@ -1517,7 +1517,7 @@ class AnalysisFlowTest extends TestCase
 
         $response->assertSessionHas(
             'analysis.website_scan_warning',
-            'We could not read this website directly, so these matches are based mainly on the Google Business Profile.'
+            'We could not read this website directly, so this account profile is based mainly on the reference Google Business Profile.'
         );
     }
 

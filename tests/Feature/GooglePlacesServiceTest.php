@@ -365,7 +365,7 @@ class GooglePlacesServiceTest extends TestCase
         );
     }
 
-    public function test_place_details_can_include_editorial_summary_for_subject_business(): void
+    public function test_place_details_can_include_editorial_summary_for_reference_company(): void
     {
         $this->configureGoogle();
 
@@ -431,7 +431,7 @@ class GooglePlacesServiceTest extends TestCase
         );
     }
 
-    public function test_independent_competitor_searches_are_sent_as_one_batch(): void
+    public function test_independent_account_searches_are_sent_as_one_batch(): void
     {
         $this->configureGoogle();
         Http::preventStrayRequests();

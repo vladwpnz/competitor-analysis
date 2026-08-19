@@ -21,24 +21,24 @@ Route::post(
 )->name('analysis.start');
 
 Route::get(
-    '/competitors',
+    '/accounts',
     [AnalysisController::class, 'competitors']
-)->name('competitors');
+)->name('accounts');
 
 Route::get(
-    '/competitors/search',
+    '/accounts/search',
     [CompetitorSelectionController::class, 'search']
-)->name('competitors.search');
+)->name('accounts.search');
 
 Route::post(
-    '/competitors/add',
+    '/accounts/add',
     [CompetitorSelectionController::class, 'add']
-)->name('competitors.add');
+)->name('accounts.add');
 
 Route::delete(
-    '/competitors/remove',
+    '/accounts/remove',
     [CompetitorSelectionController::class, 'remove']
-)->name('competitors.remove');
+)->name('accounts.remove');
 
 Route::get(
     '/analysis/email',

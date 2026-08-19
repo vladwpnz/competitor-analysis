@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'AI-assisted competitor discovery')
-@section('meta_description', 'Build a ranked competitor shortlist from website signals, Google Business data, AI classification, and deterministic fallback logic.')
+@section('title', 'B2B lookalike account discovery')
+@section('meta_description', 'Use a reference company to discover similar B2B accounts and build an evidence-based prospect shortlist.')
 
 @section('content')
 
@@ -61,19 +61,19 @@
     <section class="hero" aria-labelledby="hero-title">
         <div class="container hero-inner">
             <div class="hero-copy">
-                <p class="hero-kicker">Competitor research, grounded in evidence</p>
+                <p class="hero-kicker">B2B account discovery, grounded in evidence</p>
 
                 <h1 id="hero-title">
-                    Find competitors <span>that matter.</span>
+                    Find more companies <span>like your best customers.</span>
                 </h1>
 
                 <p class="hero-description">
-                    Turn website signals and Google Business data into a ranked shortlist you can inspect and refine.
+                    Use a strong customer, ideal target, or other reference company to build a business profile, discover similar accounts, and review a ranked prospect shortlist.
                 </p>
 
                 <div class="hero-proof" aria-label="Analysis principles">
-                    <span>Market-aware discovery</span>
-                    <span>Inspectable ranking</span>
+                    <span>Reference-led profiling</span>
+                    <span>Evidence-based fit</span>
                     <span>Human review</span>
                 </div>
             </div>
@@ -89,9 +89,9 @@
                     <div class="analysis-form-header">
                         <div>
                             <span class="analysis-form-label">New analysis</span>
-                            <h2>Define the business</h2>
+                            <h2>Choose a reference company</h2>
                         </div>
-                        <span class="analysis-form-status">Two verified inputs</span>
+                        <span class="analysis-form-status">Two matching signals</span>
                     </div>
 
                     @if ($editMode !== null)
@@ -106,11 +106,11 @@
                         <div class="form-step">
                             <div class="form-heading">
                                 <span class="form-index" aria-hidden="true">01</span>
-                                <label for="website">Business website</label>
+                                <label for="website">Reference company website</label>
                             </div>
 
                             <p class="field-helper" id="website-helper">
-                                Used to read services, positioning and business signals.
+                                Builds the core profile from its business model, services, customers and market signals.
                             </p>
 
                             <div class="input-shell">
@@ -119,12 +119,13 @@
                                     name="website"
                                     type="text"
                                     value="{{ $websiteValue }}"
-                                    placeholder="https://yourwebsite.com"
+                                    placeholder="https://reference-company.com"
                                     autocomplete="url"
                                     inputmode="url"
                                     autocapitalize="none"
                                     spellcheck="false"
-                                    aria-describedby="website-helper"
+                                    aria-describedby="website-helper @error('website') website-error @enderror"
+                                    @error('website') aria-invalid="true" @enderror
                                     @if ($editMode === 'google_business') readonly @endif
                                     @if ($editMode === 'website') autofocus @endif
                                     required
@@ -132,7 +133,7 @@
                             </div>
 
                             @error('website')
-                                <div class="field-error" role="alert">{{ $message }}</div>
+                                <div id="website-error" class="field-error" role="alert">{{ $message }}</div>
                             @enderror
                         </div>
 
@@ -145,11 +146,11 @@
                         <div class="form-step">
                             <div class="form-heading">
                                 <span class="form-index" aria-hidden="true">02</span>
-                                <label for="google_business">Google Business Profile</label>
+                                <label for="google_business">Reference Google Business Profile</label>
                             </div>
 
                             <p class="field-helper" id="google-business-helper">
-                                Confirms identity and adds location context where relevant.
+                                Confirms the same company and adds geographic and operating context where relevant.
                             </p>
 
                             <div
@@ -162,14 +163,15 @@
                                         name="google_business"
                                         type="text"
                                         value="{{ $googleBusinessValue }}"
-                                        placeholder="Search for your business on Google Maps"
+                                        placeholder="Search for the reference company on Google Maps"
                                         autocomplete="off"
                                         spellcheck="false"
                                         role="combobox"
                                         aria-autocomplete="list"
                                         aria-controls="google-business-suggestions"
                                         aria-expanded="false"
-                                        aria-describedby="google-business-helper google-business-status"
+                                        aria-describedby="google-business-helper google-business-status @error('google_business') google-business-error @enderror @error('google_place_id') google-place-id-error @enderror @error('google_places_session_token') google-session-token-error @enderror"
+                                        @if ($errors->hasAny(['google_business', 'google_place_id', 'google_places_session_token'])) aria-invalid="true" @endif
                                         @if ($editMode === 'website') readonly @endif
                                         @if ($editMode === 'google_business') autofocus @endif
                                         required
@@ -211,49 +213,51 @@
                             ></div>
 
                             @error('google_business')
-                                <div class="field-error" role="alert">{{ $message }}</div>
+                                <div id="google-business-error" class="field-error" role="alert">{{ $message }}</div>
                             @enderror
 
                             @error('google_place_id')
-                                <div class="field-error" role="alert">{{ $message }}</div>
+                                <div id="google-place-id-error" class="field-error" role="alert">{{ $message }}</div>
                             @enderror
 
                             @error('google_places_session_token')
-                                <div class="field-error" role="alert">{{ $message }}</div>
+                                <div id="google-session-token-error" class="field-error" role="alert">{{ $message }}</div>
                             @enderror
                         </div>
                     </div>
 
                     <button type="submit" class="analysis-button">
-                        <span>Build competitor shortlist</span>
+                        <span>Find lookalike accounts</span>
                         <span class="button-arrow" aria-hidden="true">↗</span>
                     </button>
 
                     <div class="analysis-trust">
                         <span>No account required</span>
-                        <span>You review every match</span>
+                        <span>The reference company is excluded</span>
                     </div>
 
                     <div
                         class="analysis-loading"
                         id="analysis-loading"
+                        role="status"
                         aria-live="polite"
+                        aria-atomic="true"
                         hidden
                     >
                         <div class="analysis-loading-head">
                             <span class="analysis-loading-mark" aria-hidden="true"></span>
                             <div>
-                                <strong>Building your shortlist</strong>
-                                <span>We are combining business and market signals.</span>
+                                <strong>Building your prospect shortlist</strong>
+                                <span>We are combining reference-company and market signals.</span>
                             </div>
                         </div>
 
                         <ol class="analysis-loading-stages">
-                            <li>Reading website signals</li>
-                            <li>Understanding the business</li>
-                            <li>Identifying market scope</li>
-                            <li>Discovering competitor candidates</li>
-                            <li>Ranking by relevance</li>
+                            <li>Reading reference company signals</li>
+                            <li>Building the business profile</li>
+                            <li>Understanding market context</li>
+                            <li>Finding lookalike accounts</li>
+                            <li>Ranking account fit</li>
                         </ol>
                     </div>
                 </form>
@@ -264,34 +268,34 @@
         <div class="container">
             <div class="pipeline-heading">
                 <p>How the analysis works</p>
-                <h2 id="pipeline-title">From raw signals to a shortlist you can defend.</h2>
+                <h2 id="pipeline-title">From a reference company to accounts worth reviewing.</h2>
             </div>
 
             <ol class="pipeline-list">
                 <li>
                     <span>01</span>
-                    <strong>Website signals</strong>
-                    <p>Read services, positioning and business context.</p>
+                    <strong>Reference company signals</strong>
+                    <p>Read the website and verified Google Business context.</p>
                 </li>
                 <li>
                     <span>02</span>
                     <strong>Business understanding</strong>
-                    <p>Classify the operating model and customer market.</p>
+                    <p>Classify the operating model, offering and customer market.</p>
                 </li>
                 <li>
                     <span>03</span>
-                    <strong>Competitor discovery</strong>
-                    <p>Search locally or across broader digital markets.</p>
+                    <strong>Lookalike discovery</strong>
+                    <p>Find companies with a comparable business profile.</p>
                 </li>
                 <li>
                     <span>04</span>
-                    <strong>Relevance ranking</strong>
-                    <p>Score type, services, query evidence and distance.</p>
+                    <strong>Fit ranking</strong>
+                    <p>Score business type, services, search evidence and geographic context.</p>
                 </li>
                 <li>
                     <span>05</span>
-                    <strong>Final shortlist</strong>
-                    <p>Remove weak matches and add known competitors.</p>
+                    <strong>Prospect shortlist</strong>
+                    <p>Remove weak matches and add accounts you already know.</p>
                 </li>
             </ol>
         </div>
@@ -302,21 +306,21 @@
             <div class="scope-copy">
                 <h2 id="scope-title">The market decides how discovery works.</h2>
                 <p>
-                    A nearby service business and a global software platform should not be ranked by the same geographic assumptions.
+                    Similar physical businesses may share a geographic context. Broader markets need a different signal mix.
                 </p>
             </div>
 
             <div class="scope-comparison">
                 <article>
                     <span>Local and hybrid markets</span>
-                    <h3>Relevance with geographic context</h3>
-                    <p>Distance supports the ranking without outweighing business type and service fit.</p>
+                    <h3>Account fit with geographic context</h3>
+                    <p>Location can support the fit of similar physical businesses without outweighing business type and services.</p>
                 </article>
 
                 <article>
                     <span>Broader markets</span>
-                    <h3>Semantic fit before proximity</h3>
-                    <p>Discovery prioritizes direct competitors, product intent and market alignment.</p>
+                    <h3>Commercial fit before proximity</h3>
+                    <p>Business model, services, target customers and market scope matter more than distance.</p>
                 </article>
             </div>
         </div>
@@ -327,7 +331,7 @@
             <div class="capabilities-heading">
                 <h2>Built for evidence, not a black-box list.</h2>
                 <p>
-                    Every stage contributes to a shortlist that remains inspectable and under your control.
+                    Every stage contributes evidence to a shortlist that stays inspectable and under your control.
                 </p>
             </div>
 
@@ -354,13 +358,13 @@
                 <article class="capability-detail capability-detail-tinted">
                     <span>Quality control</span>
                     <h3>Ranking and duplicate removal</h3>
-                    <p>Type, service, query and distance evidence shape the order while duplicate companies and the subject business are excluded.</p>
+                    <p>Type, service, search and geographic evidence shape the order while duplicates and the reference company are excluded.</p>
                 </article>
 
                 <article class="capability-detail capability-detail-plain">
                     <span>Human review</span>
                     <h3>A shortlist you can edit</h3>
-                    <p>Remove weak matches, search manually and keep the final selection in the current session.</p>
+                    <p>Remove weak matches, search manually and keep the prospect shortlist in the current session.</p>
                 </article>
             </div>
         </div>
@@ -395,18 +399,18 @@
     <section class="review-section" aria-labelledby="review-title">
         <div class="container review-layout">
             <div class="review-copy">
-                <h2 id="review-title">Automation finds the shortlist. You make the final call.</h2>
+                <h2 id="review-title">Discovery builds the shortlist. You make the final call.</h2>
                 <p>
-                    Ranking evidence stays visible, selected competitors remain editable and manual discovery is part of the same workflow.
+                    Fit evidence stays visible, recommended accounts remain editable and manual account discovery uses the same workflow.
                 </p>
             </div>
 
             <div class="review-signals" aria-label="Review controls">
-                <span>Relevance score</span>
+                <span>Fit score</span>
                 <span>Matched search evidence</span>
                 <span>Distance when relevant</span>
                 <span>Google rating when available</span>
-                <span>Add or remove competitors</span>
+                <span>Add or remove accounts</span>
             </div>
         </div>
     </section>
@@ -414,12 +418,12 @@
     <section class="bottom-cta">
         <div class="container cta-inner">
             <div class="cta-copy">
-                <h2>Start with the business you know.</h2>
-                <p>We will build the competitor shortlist from there.</p>
+                <h2>Start with one company worth finding more of.</h2>
+                <p>We will build a ranked prospect shortlist from its business profile.</p>
             </div>
 
             <a href="#analysis-form" class="cta-button">
-                Start an analysis
+                Find lookalike accounts
                 <span aria-hidden="true">↗</span>
             </a>
         </div>
@@ -650,6 +654,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         suggestionsBox.replaceChildren();
         suggestionsBox.hidden = true;
+        businessInput.removeAttribute(
+            'aria-activedescendant'
+        );
 
         setExpanded(false);
     };
@@ -709,7 +716,7 @@ document.addEventListener('DOMContentLoaded', () => {
         closeSuggestions();
 
         setStatus(
-            'Google Business Profile selected',
+            'Reference Google Business Profile selected',
             'selected'
         );
     };
@@ -722,12 +729,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
         buttons.forEach(
             (button, index) => {
+                const isActive =
+                    index === activeIndex;
+
                 button.classList.toggle(
                     'is-active',
-                    index === activeIndex
+                    isActive
                 );
 
-                if (index === activeIndex) {
+                button.setAttribute(
+                    'aria-selected',
+                    isActive ? 'true' : 'false'
+                );
+
+                if (isActive) {
+                    businessInput.setAttribute(
+                        'aria-activedescendant',
+                        button.id
+                    );
+
                     button.scrollIntoView({
                         block: 'nearest',
                     });
@@ -773,6 +793,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 button.setAttribute(
                     'role',
                     'option'
+                );
+
+                button.id =
+                    'google-business-option-'
+                    + String(index);
+
+                button.setAttribute(
+                    'aria-selected',
+                    'false'
                 );
 
                 button.dataset.index =
@@ -1127,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 resetSelectedBusiness();
 
                 setStatus(
-                    'Please search for the business again and select it from the Google results.',
+                    'Search for the reference company again and select it from the Google results.',
                     'error'
                 );
 
@@ -1157,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (hasExistingSelection) {
         setStatus(
-            'Google Business Profile selected',
+            'Reference Google Business Profile selected',
             'selected'
         );
     }

@@ -224,16 +224,18 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
         return implode(
             ' ',
             [
-                'You are the business classification component of a competitor-discovery application.',
+                'You are the business classification component of an account-intelligence application.',
                 'Use only the supplied public website and Google Business Profile context.',
+                'The supplied company is a reference account: an example of the kind of company the user wants to find more of.',
                 'A Google Business category can be broad, incomplete, or misleading, so determine the actual operating business model from all available evidence.',
                 'Explicitly distinguish distributor, manufacturer, systems integrator, SaaS company, local service provider, agency, retailer, wholesaler, marketplace, and other business models.',
-                'Choose discovery_mode by how true competitors should be discovered, not merely by industry: local_physical for geographically local businesses; broader_physical for real-world companies competing across a region or country where business/location directories are still useful; digital_global for digital products and also for national/global service markets such as mortgage, insurance, banking or finance where true competitors are brands and substitutable offerings rather than nearby offices; hybrid only when both physical/local and digital/broader competitor discovery are genuinely important.',
+                'Choose discovery_mode by where companies with a similar commercial and operating profile should be discovered, not merely by industry: local_physical for geographically local businesses; broader_physical for real-world companies operating across a region or country where business/location directories are still useful; digital_global for digital products and location-independent national or global service markets; hybrid only when both physical/local and digital/broader lookalike discovery are genuinely important.',
                 'Patient-facing clinics, dentists, dermatology practices, therapists and similar healthcare practices are normally local_physical unless the supplied evidence clearly describes a primarily telehealth or location-independent business.',
-                'Focus on companies that sell a substitutable solution to similar target customers.',
+                'Build a profile for finding companies that resemble the reference account across business model, industry, products or services, B2B or B2C orientation, target customers, market scope, geographic context, and physical or digital operating model.',
+                'A useful lookalike account does not need to sell a directly substitutable solution or compete with the reference company.',
                 'Search queries must be generic category or service phrases suitable for Google Places.',
-                'Never put the subject company name, a competitor company name, a domain, or a URL in search_queries.',
-                'Do not invent or return a list of competitor companies.',
+                'Never put the reference company name, a returned company name, a domain, or a URL in search_queries.',
+                'Do not invent or return a list of companies.',
                 'Keep products_services and search_queries focused on the business core rather than incidental catalog items.',
             ]
         );
@@ -355,7 +357,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
         );
 
         return
-            "Classify this business for competitor discovery.\n"
+            "Build a business profile for lookalike-account discovery.\n"
             . "Business context:\n"
             . json_encode(
                 $context,
@@ -400,7 +402,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
 
                 'business_type'
                     => $shortString(
-                        'A concise competitor category suitable for matching and Google Places, for example Industrial Automation Distributor, Plumber, or CRM Software Company.'
+                        'A concise reference-account category suitable for matching and Google Places, for example Industrial Automation Distributor, Plumber, or CRM Software Company.'
                     ),
 
                 'vertical' => [
@@ -429,7 +431,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                 'market_scope' => [
                     'type' => 'string',
                     'description'
-                        => 'Whether meaningful competitors are primarily local, broader/national/global, or a hybrid of both.',
+                        => 'Whether comparable accounts are primarily local, broader/national/global, or a hybrid of both.',
                     'enum' => [
                         'local',
                         'broader',
@@ -440,7 +442,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                 'discovery_mode' => [
                     'type' => 'string',
                     'description'
-                        => 'How competitors should be discovered: local physical businesses, broader physical businesses, global digital/product competitors, or a genuine hybrid of physical and digital discovery.',
+                        => 'How lookalike accounts should be discovered: local physical businesses, broader physical businesses, global digital/product companies, or a genuine hybrid of physical and digital discovery.',
                     'enum' => [
                         'local_physical',
                         'broader_physical',
@@ -465,7 +467,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
 
                 'competitor_types'
                     => $stringArray(
-                        'Generic types of businesses that would be true competitors. Do not give company names.',
+                        'Generic types of businesses with a similar commercial profile. Do not give company names.',
                         1,
                         6
                     ),
@@ -480,7 +482,7 @@ class GeminiBusinessClassifier implements AiBusinessClassifier
                 'geography_weight' => [
                     'type' => 'string',
                     'description'
-                        => 'How strongly physical distance should affect competitor relevance.',
+                        => 'How strongly physical distance should affect account fit.',
                     'enum' => [
                         'high',
                         'medium',

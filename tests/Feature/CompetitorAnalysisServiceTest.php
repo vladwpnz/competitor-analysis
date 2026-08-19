@@ -147,7 +147,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         }
     }
 
-    public function test_local_analysis_keeps_only_one_result_per_competitor_company(): void
+    public function test_local_analysis_keeps_only_one_result_per_recommended_company(): void
     {
         $competitorSearch = Mockery::mock(
             CompetitorSearchService::class
@@ -427,7 +427,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
     }
 
-    public function test_digital_global_analysis_uses_direct_ai_competitors_without_google_places(): void
+    public function test_digital_global_analysis_uses_ai_lookalike_accounts_without_google_places(): void
     {
         $businessIntelligence = Mockery::mock(
             BusinessIntelligenceService::class
@@ -499,32 +499,38 @@ class CompetitorAnalysisServiceTest extends TestCase
                 [
                     'name' => 'Salesforce',
                     'domain' => 'salesforce.com',
-                    'reason' => 'Direct CRM platform overlap.',
+                    'reason' => 'Similar B2B CRM platform and customer profile.',
+                    'fit_score' => 92,
                 ],
                 [
                     'name' => 'Zoho',
                     'domain' => 'zoho.com',
                     'reason' => 'CRM and marketing suite overlap.',
+                    'fit_score' => 84,
                 ],
                 [
                     'name' => 'Freshworks',
                     'domain' => 'freshworks.com',
                     'reason' => 'CRM and service platform overlap.',
+                    'fit_score' => 76,
                 ],
                 [
                     'name' => 'ActiveCampaign',
                     'domain' => 'activecampaign.com',
                     'reason' => 'Marketing automation and CRM overlap.',
+                    'fit_score' => 68,
                 ],
                 [
                     'name' => 'Pipedrive',
                     'domain' => 'pipedrive.com',
                     'reason' => 'Sales CRM overlap.',
+                    'fit_score' => 61,
                 ],
                 [
                     'name' => 'Zendesk',
                     'domain' => 'zendesk.com',
                     'reason' => 'Customer service platform overlap.',
+                    'fit_score' => 54,
                 ],
             ]);
 
@@ -626,7 +632,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
 
         $this->assertSame(
-            'Direct Competitor',
+            'Lookalike Account',
             data_get(
                 $result,
                 'top_competitors.0.primaryTypeDisplayName.text'
@@ -648,6 +654,26 @@ class CompetitorAnalysisServiceTest extends TestCase
             )
         );
 
+        $this->assertSame(
+            92,
+            data_get(
+                $result,
+                'top_competitors.0._relevance.score'
+            )
+        );
+
+        $this->assertFalse(
+            (bool) data_get(
+                $result,
+                'top_competitors.3._relevance.strong_match'
+            )
+        );
+
+        $this->assertSame(
+            3,
+            $result['strong_match_count']
+        );
+
         $this->assertStringStartsWith(
             'ai-',
             data_get(
@@ -657,7 +683,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
     }
 
-    public function test_broader_physical_analysis_uses_website_first_ai_discovery_without_google_places(): void
+    public function test_broader_physical_analysis_uses_website_first_lookalike_discovery_without_google_places(): void
     {
         $businessIntelligence = Mockery::mock(
             BusinessIntelligenceService::class
@@ -788,31 +814,36 @@ class CompetitorAnalysisServiceTest extends TestCase
                     'name' => 'Apex Motion Supply',
                     'domain' => 'apex-motion.test',
                     'reason'
-                        => 'Competes in industrial products, automation and engineered solutions.',
+                        => 'Similar industrial products, automation and engineered-solutions profile.',
+                    'fit_score' => 88,
                 ],
                 [
                     'name' => 'Vector Fluid Systems',
                     'domain' => 'vector-fluid.test',
                     'reason'
-                        => 'Competes as a broad industrial distributor serving similar customers.',
+                        => 'Broad industrial distributor serving similar commercial customers.',
+                    'fit_score' => 81,
                 ],
                 [
                     'name' => 'Precision Motion Supply',
                     'domain' => 'precision-motion.test',
                     'reason'
-                        => 'Competes in industrial distribution, motion and automation products.',
+                        => 'Similar industrial distribution, motion and automation products.',
+                    'fit_score' => 74,
                 ],
                 [
                     'name' => 'Orion Automation',
                     'domain' => 'orion-automation.test',
                     'reason'
-                        => 'Competes in motion, control and industrial automation solutions.',
+                        => 'Similar motion, control and industrial automation offering.',
+                    'fit_score' => 66,
                 ],
                 [
                     'name' => 'Keystone Pneumatics',
                     'domain' => 'keystone-pneumatics.test',
                     'reason'
-                        => 'Competes in industrial automation and pneumatic control solutions.',
+                        => 'Similar industrial automation and pneumatic-control context.',
+                    'fit_score' => 59,
                 ],
             ]);
 
@@ -946,7 +977,7 @@ class CompetitorAnalysisServiceTest extends TestCase
         );
     }
 
-    public function test_slow_gemini_competitor_discovery_falls_back_to_existing_google_places_pipeline(): void
+    public function test_slow_gemini_account_discovery_falls_back_to_existing_google_places_pipeline(): void
     {
         $businessIntelligence = Mockery::mock(
             BusinessIntelligenceService::class
@@ -1012,7 +1043,7 @@ class CompetitorAnalysisServiceTest extends TestCase
             ->once()
             ->andThrow(
                 new AnalysisDeadlineExceeded(
-                    'Gemini competitor discovery timed out.'
+                    'Gemini lookalike account discovery timed out.'
                 )
             );
 

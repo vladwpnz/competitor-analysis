@@ -222,8 +222,8 @@ class SearchProfileBuilder
             ],
 
             /*
-             * Used later to make sure the user's own business
-             * never appears in the competitor result set.
+             * Used later to make sure the reference company
+             * never appears in the recommended-account set.
              */
             'exclude' => [
                 'place_id' => data_get(
@@ -550,7 +550,7 @@ class SearchProfileBuilder
 
         /*
          * Single broad words are usually navigation labels rather
-         * than competitor-defining queries.
+         * than account-defining queries.
          */
         if (
             ! str_contains($heading, ' ')

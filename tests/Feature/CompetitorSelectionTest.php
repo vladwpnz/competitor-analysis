@@ -11,7 +11,7 @@ use Tests\TestCase;
 
 class CompetitorSelectionTest extends TestCase
 {
-    public function test_manual_competitor_search_filters_own_and_already_selected_businesses(): void
+    public function test_manual_account_search_filters_reference_and_already_selected_businesses(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -60,7 +60,7 @@ class CompetitorSelectionTest extends TestCase
             )
             ->getJson(
                 route(
-                    'competitors.search',
+                    'accounts.search',
                     [
                         'q'
                             => 'Metro Plumbing',
@@ -146,7 +146,7 @@ class CompetitorSelectionTest extends TestCase
             ->withSession($session)
             ->getJson(
                 route(
-                    'competitors.search',
+                    'accounts.search',
                     [
                         'q' => 'Pipedrive',
                     ]
@@ -174,7 +174,7 @@ class CompetitorSelectionTest extends TestCase
             )
             ->assertJsonPath(
                 'suggestions.0.category',
-                'Direct Competitor'
+                'Lookalike Account'
             );
 
         $response->assertSessionHas(
@@ -241,7 +241,8 @@ class CompetitorSelectionTest extends TestCase
                     'name' => 'Copper CRM',
                     'domain' => 'copper.com',
                     'reason'
-                        => 'Direct CRM platform competitor.',
+                        => 'Similar CRM platform company.',
+                    'fit_score' => 74,
                 ],
             ]);
 
@@ -267,7 +268,7 @@ class CompetitorSelectionTest extends TestCase
             ->withSession($session)
             ->getJson(
                 route(
-                    'competitors.search',
+                    'accounts.search',
                     [
                         'q' => 'Copper CRM',
                     ]
@@ -286,7 +287,7 @@ class CompetitorSelectionTest extends TestCase
             );
     }
 
-    public function test_ai_website_manual_competitor_can_be_added_for_broader_physical_analysis_without_google_place_details(): void
+    public function test_ai_website_manual_account_can_be_added_for_broader_physical_analysis_without_google_place_details(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -334,7 +335,7 @@ class CompetitorSelectionTest extends TestCase
         $response = $this
             ->withSession($session)
             ->postJson(
-                route('competitors.add'),
+                route('accounts.add'),
                 [
                     'place_id'
                         => $competitorId,
@@ -353,11 +354,15 @@ class CompetitorSelectionTest extends TestCase
             )
             ->assertJsonPath(
                 'competitor.category',
-                'Direct Competitor'
+                'Lookalike Account'
             )
             ->assertJsonPath(
                 'competitor.show_distance',
                 false
+            )
+            ->assertJsonPath(
+                'competitor.relevance_score',
+                null
             )
             ->assertJsonPath(
                 'count',
@@ -385,7 +390,7 @@ class CompetitorSelectionTest extends TestCase
         );
     }
 
-    public function test_manual_competitor_can_be_added_and_is_saved_in_session(): void
+    public function test_manual_account_can_be_added_without_fit_score_and_is_saved_in_session(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -424,7 +429,7 @@ class CompetitorSelectionTest extends TestCase
                 ])
             )
             ->postJson(
-                route('competitors.add'),
+                route('accounts.add'),
                 [
                     'place_id'
                         => 'new-place',
@@ -444,6 +449,10 @@ class CompetitorSelectionTest extends TestCase
             ->assertJsonPath(
                 'competitor.is_manual',
                 true
+            )
+            ->assertJsonPath(
+                'competitor.relevance_score',
+                null
             )
             ->assertJsonPath(
                 'competitor.evidence',
@@ -471,7 +480,7 @@ class CompetitorSelectionTest extends TestCase
         );
     }
 
-    public function test_automatically_discovered_frontend_competitor_uses_neutral_evidence_fallback(): void
+    public function test_automatically_discovered_frontend_account_uses_neutral_evidence_fallback(): void
     {
         $presenter = new ReflectionMethod(
             CompetitorSelectionController::class,
@@ -496,7 +505,7 @@ class CompetitorSelectionTest extends TestCase
         );
     }
 
-    public function test_manual_add_rejects_own_business(): void
+    public function test_manual_add_rejects_reference_company(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -520,7 +529,7 @@ class CompetitorSelectionTest extends TestCase
                 $this->analysisSession([])
             )
             ->postJson(
-                route('competitors.add'),
+                route('accounts.add'),
                 [
                     'place_id'
                         => 'customer-place',
@@ -531,11 +540,11 @@ class CompetitorSelectionTest extends TestCase
             ->assertStatus(422)
             ->assertJsonPath(
                 'message',
-                'Your own business cannot be added as a competitor.'
+                'The reference company cannot be added as a recommended account.'
             );
     }
 
-    public function test_manual_add_rejects_duplicate_business(): void
+    public function test_manual_add_rejects_duplicate_account(): void
     {
         $googlePlaces = Mockery::mock(
             GooglePlacesService::class
@@ -564,7 +573,7 @@ class CompetitorSelectionTest extends TestCase
                 ])
             )
             ->postJson(
-                route('competitors.add'),
+                route('accounts.add'),
                 [
                     'place_id'
                         => 'existing-place',
@@ -575,11 +584,11 @@ class CompetitorSelectionTest extends TestCase
             ->assertStatus(409)
             ->assertJsonPath(
                 'message',
-                'This competitor is already in your list.'
+                'This account is already in your shortlist.'
             );
     }
 
-    public function test_selected_competitor_can_be_removed_and_remains_removed_in_session(): void
+    public function test_selected_account_can_be_removed_and_remains_removed_in_session(): void
     {
         $response = $this
             ->withSession(
@@ -595,7 +604,7 @@ class CompetitorSelectionTest extends TestCase
                 ])
             )
             ->deleteJson(
-                route('competitors.remove'),
+                route('accounts.remove'),
                 [
                     'place_id'
                         => 'first-place',
@@ -622,7 +631,7 @@ class CompetitorSelectionTest extends TestCase
         );
     }
 
-    public function test_step_three_requires_at_least_one_selected_competitor(): void
+    public function test_step_three_requires_at_least_one_selected_account(): void
     {
         $response = $this
             ->withSession(
@@ -634,11 +643,53 @@ class CompetitorSelectionTest extends TestCase
 
         $response
             ->assertRedirect(
-                route('competitors')
+                route('accounts')
             )
             ->assertSessionHasErrors([
                 'competitors',
             ]);
+    }
+
+    public function test_results_page_distinguishes_fit_ranked_and_manual_accounts(): void
+    {
+        $rankedAccount = $this->place(
+            'ranked-place',
+            'Ranked Plumbing'
+        );
+
+        $rankedAccount['_relevance'] = [
+            'score' => 86,
+            'quality' => 'high',
+            'strong_match' => true,
+            'type_compatible' => true,
+            'evidence' => [
+                'matched_queries' => [
+                    'plumber',
+                ],
+            ],
+        ];
+
+        $manualAccount = $this->place(
+            'manual-place',
+            'Manual Plumbing'
+        );
+        $manualAccount['_manual_selection'] = true;
+
+        $this->withSession(
+            $this->analysisSession([
+                $rankedAccount,
+                $manualAccount,
+            ])
+        )
+            ->get(route('accounts'))
+            ->assertOk()
+            ->assertSee('Reference company')
+            ->assertSee('Recommended accounts')
+            ->assertSee('Fit score')
+            ->assertSee('86')
+            ->assertSee('Manual add')
+            ->assertSee('No Fit score')
+            ->assertDontSee('Relevance score');
     }
 
     public function test_step_three_collects_and_saves_analysis_email(): void
@@ -662,7 +713,7 @@ class CompetitorSelectionTest extends TestCase
                 'STEP 3 OF 3'
             )
             ->assertSee(
-                'Save Email'
+                'Save contact email'
             )
             ->assertSee(
                 'Customer Plumbing',
@@ -724,6 +775,14 @@ class CompetitorSelectionTest extends TestCase
                     'longitude'
                         => -79.3832,
                 ],
+            ],
+
+            'analysis.website_scan' => [
+                'final_url'
+                    => 'https://customer.example',
+                'status' => 200,
+                'title'
+                    => 'Customer Plumbing',
             ],
 
             'analysis.result' => [
@@ -831,13 +890,13 @@ class CompetitorSelectionTest extends TestCase
                 'text' => $name,
             ],
             'primaryType'
-                => 'digital_platform',
+                => 'lookalike_account',
             'primaryTypeDisplayName' => [
                 'text'
-                    => 'Direct Competitor',
+                    => 'Lookalike Account',
             ],
             'types' => [
-                'digital_platform',
+                'lookalike_account',
             ],
             'websiteUri'
                 => 'https://' . $domain,
@@ -861,7 +920,7 @@ class CompetitorSelectionTest extends TestCase
                         : 'ai',
                 'domain' => $domain,
                 'reason'
-                    => 'Direct product competitor.',
+                    => 'Similar B2B product company.',
             ],
         ];
     }

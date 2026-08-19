@@ -96,7 +96,7 @@ class TechnologyCompetitorMatchingTest extends TestCase
         );
     }
 
-    public function test_focused_technology_ranking_prefers_product_competitor_over_generic_dev_shop(): void
+    public function test_focused_technology_ranking_prefers_similar_product_account_over_generic_dev_shop(): void
     {
         $scorer = new CompetitorRelevanceScorer();
 

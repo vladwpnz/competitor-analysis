@@ -588,7 +588,7 @@ class CompetitorSearchService
         RuntimeException $exception
     ): void {
         Log::warning(
-            'Google Places competitor search was unavailable.',
+            'Google Places account search was unavailable.',
             [
                 'provider' => 'google_places',
                 'stage' => $stage,
@@ -784,7 +784,7 @@ class CompetitorSearchService
             )
         ) {
             throw new InvalidArgumentException(
-                'Unsupported competitor search stage.'
+                'Unsupported account search stage.'
             );
         }
 
@@ -946,7 +946,7 @@ class CompetitorSearchService
         /*
          * Google Places commonly returns another branch of the same brand
          * under a name such as "Brand Name - Downtown". A different Place ID
-         * does not make that branch a competitor, so compare the stable brand
+         * does not make that branch a new account, so compare the stable brand
          * portion of both names before accepting the candidate.
          */
         $excludedBrand = $this->brandNameCore(

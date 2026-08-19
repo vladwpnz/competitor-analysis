@@ -390,7 +390,7 @@ class BusinessIntelligenceService
 
         if ($competitorTypes === []) {
             throw new UnexpectedValueException(
-                'AI classification has no usable competitor types.'
+                'AI classification has no usable lookalike account types.'
             );
         }
 
@@ -919,7 +919,7 @@ class BusinessIntelligenceService
         string $vertical
     ): string {
         /*
-         * Discovery mode describes where competitors should be discovered,
+         * Discovery mode describes where lookalike accounts should be found,
          * while market scope still controls geography. Keep impossible
          * combinations out of the downstream pipeline without hard-coding
          * any specific company or industry.
@@ -932,9 +932,10 @@ class BusinessIntelligenceService
 
         if ($marketScope === 'broader') {
             /*
-             * National/global finance businesses compete by offering and
-             * brand rather than by nearby office location. Reuse semantic AI
-             * discovery for mortgage, insurance, banking and similar markets.
+             * National/global finance businesses are better matched by
+             * offering and operating profile than by nearby office location.
+             * Reuse semantic AI discovery for these location-independent
+             * markets.
              */
             if ($vertical === 'financial_services') {
                 return 'digital_global';

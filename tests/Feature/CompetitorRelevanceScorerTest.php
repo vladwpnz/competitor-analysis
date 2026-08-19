@@ -80,7 +80,7 @@ class CompetitorRelevanceScorerTest extends TestCase
         );
     }
 
-    public function test_relevance_beats_distance_for_local_business(): void
+    public function test_account_fit_beats_distance_for_local_business(): void
     {
         $scorer = app(
             CompetitorRelevanceScorer::class

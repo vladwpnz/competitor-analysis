@@ -1,14 +1,14 @@
 @php
-    $headerCtaLabel = $headerCtaLabel ?? 'Analyze a business';
+    $headerCtaLabel = $headerCtaLabel ?? 'Find accounts';
 @endphp
 
 <header class="site-header">
     <div class="container header-inner">
-        <a href="{{ route('home') }}" class="brand" aria-label="Competitor Intelligence home">
+        <a href="{{ route('home') }}" class="brand" aria-label="Account Intelligence home">
             <span class="brand-mark" aria-hidden="true">
                 <i></i><i></i><i></i><i></i>
             </span>
-            <span class="brand-name">Competitor Intelligence</span>
+            <span class="brand-name">Account Intelligence</span>
         </a>
 
         <nav class="main-nav" aria-label="Primary navigation">

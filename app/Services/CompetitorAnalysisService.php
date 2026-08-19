@@ -212,11 +212,11 @@ class CompetitorAnalysisService
             );
         } catch (Throwable $exception) {
             /*
-             * Direct AI discovery is an accuracy enhancement, not a hard
+             * Direct AI lookalike discovery is an accuracy enhancement, not a hard
              * dependency. Never log provider payloads, domains, or secrets.
              */
             Log::warning(
-                'AI direct competitor discovery failed; using Google Places fallback.',
+                'AI lookalike account discovery failed; using Google Places fallback.',
                 [
                     'exception'
                         => get_class(
@@ -263,7 +263,7 @@ class CompetitorAnalysisService
             self::TARGET_STRONG_MATCHES
         );
 
-        $strongMatchCount = count(
+        $strongMatchCount = $this->countStrongMatches(
             $topCompetitors
         );
 
@@ -322,6 +322,11 @@ class CompetitorAnalysisService
             'reason'
         );
 
+        $fitScore = data_get(
+            $competitor,
+            'fit_score'
+        );
+
         if (
             ! is_string($name)
             || trim($name) === ''
@@ -329,6 +334,7 @@ class CompetitorAnalysisService
             || trim($domain) === ''
             || ! is_string($reason)
             || trim($reason) === ''
+            || ! is_numeric($fitScore)
         ) {
             return null;
         }
@@ -338,6 +344,19 @@ class CompetitorAnalysisService
             trim($domain)
         );
         $reason = trim($reason);
+        $fitScore = max(
+            0,
+            min(
+                100,
+                (int) round((float) $fitScore)
+            )
+        );
+
+        $fitQuality = match (true) {
+            $fitScore >= 75 => 'high',
+            $fitScore >= 55 => 'medium',
+            default => 'low',
+        };
 
         return [
             'id' =>
@@ -356,15 +375,15 @@ class CompetitorAnalysisService
             ],
 
             'primaryType'
-                => 'digital_platform',
+                => 'lookalike_account',
 
             'primaryTypeDisplayName' => [
                 'text'
-                    => 'Direct Competitor',
+                    => 'Lookalike Account',
             ],
 
             'types' => [
-                'digital_platform',
+                'lookalike_account',
             ],
 
             'websiteUri'
@@ -381,8 +400,9 @@ class CompetitorAnalysisService
             ],
 
             '_relevance' => [
-                'quality' => 'strong',
-                'strong_match' => true,
+                'score' => $fitScore,
+                'quality' => $fitQuality,
+                'strong_match' => $fitScore >= 70,
                 'type_compatible' => true,
                 'evidence' => [
                     'discovery_source'

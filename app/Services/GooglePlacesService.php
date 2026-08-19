@@ -53,7 +53,7 @@ class GooglePlacesService
 
     /*
      * editorialSummary is an Enterprise + Atmosphere field. Keep it out of
-     * the default Place Details mask because competitor enrichment calls
+     * the default Place Details mask because account enrichment calls
      * getPlaceDetails() for the final top five and does not need this field.
      */
     private const EDITORIAL_SUMMARY_FIELD =
@@ -358,7 +358,7 @@ class GooglePlacesService
     }
 
     /**
-     * Fetch final competitor details concurrently and retain all successful
+     * Fetch final account details concurrently and retain all successful
      * responses when one or more peers fail.
      */
     public function getPlaceDetailsBatch(

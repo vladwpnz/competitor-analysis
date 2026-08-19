@@ -41,7 +41,7 @@ class GeminiCompetitorDiscoveryService
     ): array {
         if (! $this->isConfigured()) {
             throw new RuntimeException(
-                'Gemini competitor discovery is not configured.'
+                'Gemini account discovery is not configured.'
             );
         }
 
@@ -68,7 +68,7 @@ class GeminiCompetitorDiscoveryService
 
         if (! $response->successful()) {
             throw new RuntimeException(
-                'Gemini competitor discovery request failed with HTTP '
+                'Gemini account discovery request failed with HTTP '
                 . $response->status()
                 . '.'
             );
@@ -78,7 +78,7 @@ class GeminiCompetitorDiscoveryService
 
         if (! is_array($payload)) {
             throw new UnexpectedValueException(
-                'Gemini returned an invalid competitor discovery response.'
+                'Gemini returned an invalid account discovery response.'
             );
         }
 
@@ -87,7 +87,7 @@ class GeminiCompetitorDiscoveryService
             !== 'completed'
         ) {
             throw new RuntimeException(
-                'Gemini competitor discovery did not complete successfully.'
+                'Gemini account discovery did not complete successfully.'
             );
         }
 
@@ -97,7 +97,7 @@ class GeminiCompetitorDiscoveryService
 
         if ($text === null) {
             throw new UnexpectedValueException(
-                'Gemini returned no structured competitor discovery output.'
+                'Gemini returned no structured account discovery output.'
             );
         }
 
@@ -110,7 +110,7 @@ class GeminiCompetitorDiscoveryService
             );
         } catch (\JsonException $exception) {
             throw new UnexpectedValueException(
-                'Gemini returned invalid competitor discovery JSON.',
+                'Gemini returned invalid account discovery JSON.',
                 0,
                 $exception
             );
@@ -118,7 +118,7 @@ class GeminiCompetitorDiscoveryService
 
         if (! is_array($decoded)) {
             throw new UnexpectedValueException(
-                'Gemini competitor discovery output must be a JSON object.'
+                'Gemini account discovery output must be a JSON object.'
             );
         }
 
@@ -129,7 +129,7 @@ class GeminiCompetitorDiscoveryService
 
         if ($competitors === []) {
             throw new UnexpectedValueException(
-                'Gemini competitor discovery returned no usable competitors.'
+                'Gemini account discovery returned no usable accounts.'
             );
         }
 
@@ -137,9 +137,9 @@ class GeminiCompetitorDiscoveryService
     }
 
     /**
-     * Search for a manually requested direct competitor inside the same
-     * website-defined competitive set. An empty result is valid when the
-     * query does not confidently identify a direct competitor.
+     * Search for a manually requested account inside the same reference
+     * profile. An empty result is valid when the query does not confidently
+     * identify a real company.
      *
      * @throws ConnectionException
      * @throws RuntimeException
@@ -152,7 +152,7 @@ class GeminiCompetitorDiscoveryService
     ): array {
         if (! $this->isConfigured()) {
             throw new RuntimeException(
-                'Gemini competitor discovery is not configured.'
+                'Gemini account discovery is not configured.'
             );
         }
 
@@ -166,7 +166,7 @@ class GeminiCompetitorDiscoveryService
             || mb_strlen($query) < 3
         ) {
             throw new UnexpectedValueException(
-                'Competitor search query must contain at least 3 characters.'
+                'Account search query must contain at least 3 characters.'
             );
         }
 
@@ -194,7 +194,7 @@ class GeminiCompetitorDiscoveryService
 
         if (! $response->successful()) {
             throw new RuntimeException(
-                'Gemini competitor search request failed with HTTP '
+                'Gemini account search request failed with HTTP '
                 . $response->status()
                 . '.'
             );
@@ -204,7 +204,7 @@ class GeminiCompetitorDiscoveryService
 
         if (! is_array($payload)) {
             throw new UnexpectedValueException(
-                'Gemini returned an invalid competitor search response.'
+                'Gemini returned an invalid account search response.'
             );
         }
 
@@ -213,7 +213,7 @@ class GeminiCompetitorDiscoveryService
             !== 'completed'
         ) {
             throw new RuntimeException(
-                'Gemini competitor search did not complete successfully.'
+                'Gemini account search did not complete successfully.'
             );
         }
 
@@ -223,7 +223,7 @@ class GeminiCompetitorDiscoveryService
 
         if ($text === null) {
             throw new UnexpectedValueException(
-                'Gemini returned no structured competitor search output.'
+                'Gemini returned no structured account search output.'
             );
         }
 
@@ -236,7 +236,7 @@ class GeminiCompetitorDiscoveryService
             );
         } catch (\JsonException $exception) {
             throw new UnexpectedValueException(
-                'Gemini returned invalid competitor search JSON.',
+                'Gemini returned invalid account search JSON.',
                 0,
                 $exception
             );
@@ -244,7 +244,7 @@ class GeminiCompetitorDiscoveryService
 
         if (! is_array($decoded)) {
             throw new UnexpectedValueException(
-                'Gemini competitor search output must be a JSON object.'
+                'Gemini account search output must be a JSON object.'
             );
         }
 
@@ -363,7 +363,7 @@ class GeminiCompetitorDiscoveryService
 
             'system_instruction'
                 => $this->systemInstruction()
-                    . ' For manual competitor search, follow the user search text closely. If it names or strongly identifies a specific company or domain, only return it when it is a real direct competitor of the subject. For partial searches, return only direct competitors that genuinely match the text. Return an empty competitors array when there is no confident direct competitor match; never substitute an unrelated company.',
+                    . ' For manual account search, follow the user search text closely. If it names or strongly identifies a specific company or domain, return only that real company when it exists. For partial searches, return only real companies that genuinely match the text and plausibly fit the reference profile. Return an empty competitors array when there is no confident company match; never substitute an unrelated company.',
 
             'response_format' => [
                 'type' => 'text',
@@ -396,20 +396,23 @@ class GeminiCompetitorDiscoveryService
         return implode(
             ' ',
             [
-                'You are the direct competitor discovery component of a market-intelligence application.',
-                'The subject website is the primary source of truth for company identity, products and services, business model, target customers, and competitive scope.',
-                'If homepage content is unavailable or blocked, a valid subject website URL/domain is still primary identity evidence. Use that domain together with the supporting business name and classification to identify the overall company, and do not switch to branch-local competitors just because page text is missing.',
-                'Compare company to company and website to website. Identify direct competing companies whose core offering is a realistic substitute for the subject company for similar target customers.',
-                'Use classification fields only as supporting interpretation of the website. A Google Business Profile or branch name may help identify the subject, but it must not make competitor discovery location-first.',
+                'You are the lookalike-account discovery component of an account-intelligence application.',
+                'The reference website is the primary source of truth for company identity, products and services, business model, target customers, market scope, and operating model.',
+                'If homepage content is unavailable or blocked, a valid reference website URL or domain is still primary identity evidence. Use that domain together with the supporting business name and classification to understand the overall company. Do not switch to branch-local matches just because page text is missing.',
+                'Compare company to company and website to website. Identify real companies that resemble the reference account across commercially meaningful characteristics.',
+                'Matching should weigh business-model similarity, industry, core offering, target customers, B2B or B2C orientation, commercial position, operating-market scope, physical or digital operating model, and geography where it matters.',
+                'A returned company does not need to sell a directly substitutable solution or compete with the reference company.',
+                'Use classification fields as supporting interpretation of the website. A Google Business Profile or branch name may help identify the reference company, but it must not make discovery location-first.',
                 'Do not prefer a company merely because it is geographically close to the selected Google Business location.',
-                'For a multi-location, regional, national, or global company, return company-level competitors that compete with the overall website/business, not nearby branches or small local lookalikes.',
-                'For a genuinely local business, local competitors are appropriate only when the website itself clearly shows that the business competes mainly in a local market.',
-                'Prefer established companies with substantial overlap in core offering, customer type, and operating model.',
-                'Exclude agencies, consultants, implementation partners, review sites, directories, publishers, and adjacent businesses unless the subject itself operates in that same business model. Do not exclude distributors, brokers, lenders, insurers, marketplaces, or service firms when that is the subject business core model.',
-                'Never return the subject company itself, one of its branches, subsidiaries presented as the same brand, or duplicate locations of the same competitor company.',
+                'For a multi-location, regional, national, or global company, return company-level lookalikes to the overall website and business, not nearby branches chosen only by distance.',
+                'For a genuinely local business, geographic context is useful when finding similar physical businesses.',
+                'Prefer established companies with substantial overlap in operating model, core offering, customer type, and market scope.',
+                'Exclude review sites, directories, publishers, and companies with a materially different operating model unless the reference company itself uses that model.',
+                'Never return the reference company itself, one of its branches, subsidiaries presented as the same brand, or duplicate locations of the same recommended company.',
                 'Do not pad the list with weak or obscure matches just to reach a fixed count; omit uncertain candidates rather than guessing.',
-                'Return each competitor official company domain as a hostname only, without protocol, path, query string, or marketing URL.',
-                'Keep the reason concise and explain the direct company-level competitive overlap.',
+                'Return each company official domain as a hostname only, without protocol, path, query string, or marketing URL.',
+                'Use a calibrated fit_score from 0 to 100. Reserve scores above 85 for unusually close matches and do not make every recommendation strong.',
+                'Keep the reason concise and explain the account-profile similarities supported by the supplied evidence.',
             ]
         );
     }
@@ -553,9 +556,10 @@ class GeminiCompetitorDiscoveryService
         );
 
         return
-            "Identify up to 8 direct company-level competitors for the subject website.\n"
-            . "Treat the website fields as primary evidence. Use the classification only as supporting interpretation.\n"
-            . "Do not use proximity to a selected Google Business location as the reason a company is a competitor.\n"
+            "Identify up to 8 real company-level lookalike accounts for the reference website.\n"
+            . "Treat the website fields as primary evidence. Use the classification as supporting interpretation.\n"
+            . "Rank companies by reference-account fit, not by how directly they compete.\n"
+            . "Do not use proximity to a selected Google Business location as the sole reason for a match.\n"
             . "Business context:\n"
             . json_encode(
                 $context,
@@ -686,11 +690,11 @@ class GeminiCompetitorDiscoveryService
         );
 
         return
-            'Manual competitor search query: '
+            'Manual account search query: '
             . $query
-            . "\nFind up to 6 direct competitors for the subject website that specifically match this query. "
+            . "\nFind up to 6 real companies that specifically match this query and are plausible additions to the reference-account shortlist. "
             . "Treat the website as the primary source of truth and compare company to company, not branch to nearby branch. "
-            . "If the query identifies one exact competitor, return that company only. Return an empty list if there is no confident direct competitor match.\n"
+            . "If the query identifies one exact company, return that company only. Return an empty list if there is no confident company match.\n"
             . "Business context:\n"
             . json_encode(
                 $context,
@@ -712,7 +716,7 @@ class GeminiCompetitorDiscoveryService
             = self::MAX_SEARCH_RESULTS;
 
         $schema['properties']['competitors']['description']
-            = 'Direct company competitors matching the manual search text, ordered by confidence.';
+            = 'Real companies matching the manual search text, ordered by confidence.';
 
         return $schema;
     }
@@ -726,7 +730,7 @@ class GeminiCompetitorDiscoveryService
                 'competitors' => [
                     'type' => 'array',
                     'description'
-                        => 'Direct company competitors ordered from strongest match to weaker match.',
+                        => 'Lookalike accounts ordered from strongest reference-account fit to weaker fit.',
                     'minItems' => 1,
                     'maxItems' => self::MAX_COMPETITORS,
                     'items' => [
@@ -745,13 +749,21 @@ class GeminiCompetitorDiscoveryService
                             'reason' => [
                                 'type' => 'string',
                                 'description'
-                                    => 'Short explanation of direct competitive overlap.',
+                                    => 'Short explanation of the account-profile similarities.',
+                            ],
+                            'fit_score' => [
+                                'type' => 'integer',
+                                'description'
+                                    => 'Calibrated reference-account fit score from 0 to 100.',
+                                'minimum' => 0,
+                                'maximum' => 100,
                             ],
                         ],
                         'required' => [
                             'name',
                             'domain',
                             'reason',
+                            'fit_score',
                         ],
                         'additionalProperties' => false,
                     ],
@@ -811,13 +823,23 @@ class GeminiCompetitorDiscoveryService
                 360
             );
 
+            $fitScore = $competitor['fit_score'] ?? null;
+
             if (
                 $name === null
                 || $domain === null
                 || $reason === null
+                || ! is_numeric($fitScore)
             ) {
                 continue;
             }
+
+            $fitScore = (int) round(
+                max(
+                    0,
+                    min(100, (float) $fitScore)
+                )
+            );
 
             $normalizedName = $this->normalizeName(
                 $name
@@ -855,6 +877,7 @@ class GeminiCompetitorDiscoveryService
                 'name' => $name,
                 'domain' => $domain,
                 'reason' => $reason,
+                'fit_score' => $fitScore,
             ];
 
             if (

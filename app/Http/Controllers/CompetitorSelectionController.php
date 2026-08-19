@@ -24,7 +24,7 @@ class CompetitorSelectionController extends Controller
         if (! $this->hasAnalysisSession()) {
             return response()->json([
                 'message'
-                    => 'Start an analysis before customizing competitors.',
+                    => 'Start an analysis before customizing accounts.',
                 'suggestions'
                     => [],
             ], 409);
@@ -67,8 +67,8 @@ class CompetitorSelectionController extends Controller
             /*
              * Text Search is intentional here instead of Autocomplete.
              * The user may search by a business name OR a website/domain,
-             * and this manual competitor selection is not part of the
-             * subject-business Autocomplete billing/session flow.
+             * and this manual account selection is not part of the
+             * reference-company Autocomplete billing/session flow.
              */
             $places = $googlePlaces->searchBusinesses(
                 $query,
@@ -77,7 +77,7 @@ class CompetitorSelectionController extends Controller
         } catch (RuntimeException) {
             return response()->json([
                 'message'
-                    => 'Competitor search is temporarily unavailable.',
+                    => 'Account search is temporarily unavailable.',
                 'suggestions'
                     => [],
             ], 502);
@@ -200,7 +200,7 @@ class CompetitorSelectionController extends Controller
         if (! $this->hasAnalysisSession()) {
             return response()->json([
                 'message'
-                    => 'Start an analysis before customizing competitors.',
+                    => 'Start an analysis before customizing accounts.',
             ], 409);
         }
 
@@ -232,7 +232,7 @@ class CompetitorSelectionController extends Controller
         ) {
             return response()->json([
                 'message'
-                    => 'Your own business cannot be added as a competitor.',
+                    => 'The reference company cannot be added as a recommended account.',
             ], 422);
         }
 
@@ -247,7 +247,7 @@ class CompetitorSelectionController extends Controller
             ) {
                 return response()->json([
                     'message'
-                        => 'This competitor is already in your list.',
+                        => 'This account is already in your shortlist.',
                 ], 409);
             }
         }
@@ -258,7 +258,7 @@ class CompetitorSelectionController extends Controller
         ) {
             return response()->json([
                 'message'
-                    => 'You can select up to 20 competitors.',
+                    => 'You can select up to 20 accounts.',
             ], 422);
         }
 
@@ -285,8 +285,8 @@ class CompetitorSelectionController extends Controller
         try {
             /*
              * Deliberately use the normal details mask here.
-             * editorialSummary is only requested for the subject business,
-             * never for manually added competitors.
+             * editorialSummary is only requested for the reference company,
+             * never for manually added accounts.
              */
             $competitor = $googlePlaces
                 ->getPlaceDetails(
@@ -295,7 +295,7 @@ class CompetitorSelectionController extends Controller
         } catch (RuntimeException) {
             return response()->json([
                 'message'
-                    => 'Could not load that competitor right now.',
+                    => 'Could not load that account right now.',
             ], 502);
         }
 
@@ -308,7 +308,7 @@ class CompetitorSelectionController extends Controller
         ) {
             return response()->json([
                 'message'
-                    => 'Google returned an invalid competitor record.',
+                    => 'Google returned an invalid account record.',
             ], 502);
         }
 
@@ -339,7 +339,7 @@ class CompetitorSelectionController extends Controller
 
         return response()->json([
             'message'
-                => 'Competitor added.',
+                => 'Account added.',
             'competitor'
                 => $this->frontendCompetitor(
                     $competitor
@@ -377,15 +377,15 @@ class CompetitorSelectionController extends Controller
         ) {
             return response()->json([
                 'message'
-                    => 'AI competitor search context is unavailable. Start the analysis again.',
+                    => 'AI account search context is unavailable. Start the analysis again.',
                 'suggestions'
                     => [],
             ], 409);
         }
 
         /*
-         * AI website discovery already asks Gemini for up to eight direct
-         * competitors but shows only five. Search that cached pool first
+         * AI website discovery already asks Gemini for up to eight lookalike
+         * accounts but shows only five. Search that cached pool first
          * so common manual additions do not require another API call or
          * fail because a project-level Gemini rate limit was reached.
          */
@@ -409,7 +409,7 @@ class CompetitorSelectionController extends Controller
         if (! $digitalDiscovery->isConfigured()) {
             return response()->json([
                 'message'
-                    => 'No matching competitor was found in the current shortlist.',
+                    => 'No matching account was found in the current candidate pool.',
                 'suggestions'
                     => [],
             ]);
@@ -433,14 +433,14 @@ class CompetitorSelectionController extends Controller
                 'message'
                     => $status === 429
                         ? 'AI search limit reached. Try again shortly.'
-                        : 'AI competitor search is temporarily unavailable.',
+                        : 'AI account search is temporarily unavailable.',
                 'suggestions'
                     => [],
             ], $status);
         } catch (Throwable) {
             return response()->json([
                 'message'
-                    => 'AI competitor search is temporarily unavailable.',
+                    => 'AI account search is temporarily unavailable.',
                 'suggestions'
                     => [],
             ], 502);
@@ -497,6 +497,7 @@ class CompetitorSelectionController extends Controller
                 || ($domain !== '' && str_contains($needle, $domain))
             ) {
                 $candidate['_manual_selection'] = true;
+                unset($candidate['_relevance']['score']);
                 data_set(
                     $candidate,
                     '_discovery.source',
@@ -607,7 +608,7 @@ class CompetitorSelectionController extends Controller
                 'name' => (string) data_get(
                     $competitor,
                     'displayName.text',
-                    'Competitor'
+                    'Account'
                 ),
                 'secondary_text' => (string) data_get(
                     $competitor,
@@ -615,7 +616,7 @@ class CompetitorSelectionController extends Controller
                     ''
                 ),
                 'category'
-                    => 'Direct Competitor',
+                    => 'Lookalike Account',
             ];
         }
 
@@ -653,7 +654,7 @@ class CompetitorSelectionController extends Controller
         ) {
             return response()->json([
                 'message'
-                    => 'Search for that competitor again before adding it.',
+                    => 'Search for that account again before adding it.',
             ], 422);
         }
 
@@ -677,7 +678,7 @@ class CompetitorSelectionController extends Controller
 
         return response()->json([
             'message'
-                => 'Competitor added.',
+                => 'Account added.',
             'competitor'
                 => $this->frontendCompetitor(
                     $competitor
@@ -748,15 +749,15 @@ class CompetitorSelectionController extends Controller
             ],
 
             'primaryType'
-                => 'digital_platform',
+                => 'lookalike_account',
 
             'primaryTypeDisplayName' => [
                 'text'
-                    => 'Direct Competitor',
+                    => 'Lookalike Account',
             ],
 
             'types' => [
-                'digital_platform',
+                'lookalike_account',
             ],
 
             'websiteUri'
@@ -775,8 +776,8 @@ class CompetitorSelectionController extends Controller
             ],
 
             '_relevance' => [
-                'quality' => 'strong',
-                'strong_match' => true,
+                'quality' => 'manual',
+                'strong_match' => false,
                 'type_compatible' => true,
                 'evidence' => [
                     'discovery_source'
@@ -808,7 +809,7 @@ class CompetitorSelectionController extends Controller
         if (! $this->hasAnalysisSession()) {
             return response()->json([
                 'message'
-                    => 'Start an analysis before customizing competitors.',
+                    => 'Start an analysis before customizing accounts.',
             ], 409);
         }
 
@@ -845,7 +846,7 @@ class CompetitorSelectionController extends Controller
 
         return response()->json([
             'message'
-                => 'Competitor removed.',
+                => 'Account removed.',
             'count'
                 => count($selected),
         ]);
@@ -862,10 +863,10 @@ class CompetitorSelectionController extends Controller
 
         if ($selected === []) {
             return redirect()
-                ->route('competitors')
+                ->route('accounts')
                 ->withErrors([
                     'competitors'
-                        => 'Add at least one competitor before continuing.',
+                        => 'Add at least one account before continuing.',
                 ]);
         }
 
@@ -903,10 +904,10 @@ class CompetitorSelectionController extends Controller
 
         if ($this->selectedCompetitors() === []) {
             return redirect()
-                ->route('competitors')
+                ->route('accounts')
                 ->withErrors([
                     'competitors'
-                        => 'Add at least one competitor before continuing.',
+                        => 'Add at least one account before continuing.',
                 ]);
         }
 
@@ -996,12 +997,12 @@ class CompetitorSelectionController extends Controller
             (string) data_get(
                 $competitor,
                 'displayName.text',
-                'Competitor'
+                'Account'
             )
         );
 
         if ($name === '') {
-            $name = 'Competitor';
+            $name = 'Account';
         }
 
         $category = data_get(
@@ -1160,7 +1161,7 @@ class CompetitorSelectionController extends Controller
                 'Matched search: '.$matchedQuery,
             $relevanceQuality !== '' =>
                 Str::headline($relevanceQuality)
-                .' relevance across available signals',
+                .' fit across available signals',
             $isManualSelection =>
                 'Added manually to the shortlist',
             default => 'Included from the current analysis',

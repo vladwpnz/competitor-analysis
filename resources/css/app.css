@@ -1178,7 +1178,7 @@ svg {
     color: var(--accent);
 }
 
-/* Competitor workspace */
+/* Account workspace */
 
 .competitors-page {
     min-height: calc(100dvh - 72px);
@@ -1818,7 +1818,7 @@ svg {
     font-weight: 600;
 }
 
-/* Manual competitor modal */
+/* Manual account modal */
 
 .step2-modal-backdrop {
     position: fixed;
@@ -2053,6 +2053,20 @@ svg {
     margin-top: 2px;
     color: var(--muted);
     font-size: 10px;
+}
+
+.step3-analysis-summary .step3-reference-address {
+    margin-top: 6px;
+    color: var(--ink-soft);
+    font-size: 11px;
+    line-height: 1.5;
+    overflow-wrap: anywhere;
+}
+
+.step3-analysis-summary .step3-reference-website {
+    margin-top: 6px;
+    color: var(--accent);
+    overflow-wrap: anywhere;
 }
 
 .step3-back-link,

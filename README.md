@@ -1,21 +1,25 @@
-# Competitor Intelligence
+# Account Intelligence
 
-Competitor Intelligence is a Laravel portfolio application that turns a business website and Google Business Profile into a ranked, reviewable competitor shortlist. It combines website signals, Google Places data, optional Gemini classification and discovery, deterministic fallback rules, and evidence-based relevance scoring.
+Account Intelligence is a Laravel application that analyzes a reference company and discovers ranked lookalike B2B accounts using website signals, Google Places, optional Gemini assistance, deterministic fallback logic, and evidence-based fit ranking.
 
-The project focuses on the discovery stage of competitor analysis: identifying businesses that are genuinely comparable, filtering weak or duplicate candidates, and giving the user control over the final selection.
+The reference company is an example of the kind of account the user wants to find more of. It can be a strong customer, an ideal customer profile example, an attractive target account, or another representative company in the market. Recommendations are based on commercially useful similarities, not only on direct competition.
 
 ## What the application does
 
-1. Accepts a business website and an explicitly selected Google Business Profile.
+1. Accepts a reference company website and an explicitly selected reference Google Business Profile.
 2. Scans the website for titles, descriptions, headings, and readable homepage content.
-3. Confirms that the selected business profile is compatible with the submitted website.
-4. Builds a normalized business profile from website and Google Places signals.
-5. Classifies the operating model, vertical, market scope, and search intent.
-6. Discovers candidates through Google Places, Gemini-assisted website discovery, or both, depending on the market.
-7. Scores candidates using type compatibility, service overlap, query evidence, distance, and other business signals.
-8. Removes the subject business, related locations, unavailable businesses, and duplicate companies.
-9. Presents the strongest matches for manual review, addition, and removal.
-10. Stores the selected shortlist and contact email in the current session.
+3. Confirms that the selected Google Business Profile is compatible with the submitted website.
+4. Builds a normalized account profile from website and Google Places signals.
+5. Classifies the business model, industry, operating model, market scope, target customers, and search intent.
+6. Discovers similar companies through Google Places, Gemini-assisted website discovery, or both, depending on the market.
+7. Ranks candidates by account fit using business type, service overlap, search evidence, operating context, and geography where it matters.
+8. Removes the reference company, related locations, unavailable businesses, and duplicate companies.
+9. Presents the strongest recommended accounts for review, manual addition, and removal.
+10. Stores the prospect shortlist and contact email in the current session.
+
+The working flow is:
+
+`Reference company -> website and Google signals -> profile construction -> classification -> account discovery -> fit ranking -> manual shortlist review`
 
 ## Major features
 
@@ -23,13 +27,14 @@ The project focuses on the discovery stage of competitor analysis: identifying b
 - Google Business autocomplete and place-detail retrieval through Google Places API (New).
 - Gemini-based structured business classification when configured.
 - Deterministic classification fallback when Gemini is unavailable or returns invalid data.
-- Separate strategies for local, hybrid, broader physical, and digital/global markets.
-- Staged geographic expansion for local discovery.
-- AI-assisted direct competitor discovery for suitable broader and digital businesses.
-- Relevance scoring and ranking based on business type, services, search evidence, and geography.
-- Duplicate-company filtering and own-business exclusion.
-- Manual competitor search, addition, and removal.
+- Separate discovery strategies for local, hybrid, broader physical, and digital or global markets.
+- Staged geographic expansion for similar local businesses.
+- AI-assisted lookalike discovery for suitable broader and digital markets.
+- Fit ranking based on business type, services, search evidence, operating model signals, and geography.
+- Duplicate-company filtering and reference-company exclusion.
+- Manual account search, addition, and removal without a fabricated Fit score.
 - Graceful handling of blocked websites and external API failures.
+- A shared synchronous request deadline with bounded provider calls and reserved response time.
 
 ## Technology stack
 
@@ -49,24 +54,30 @@ The application keeps the discovery pipeline split into focused services:
 | Responsibility | Main component |
 | --- | --- |
 | Website retrieval and signal extraction | `WebsiteScanner` |
-| Normalized business profile construction | `BusinessProfileBuilder` |
+| Normalized reference profile construction | `BusinessProfileBuilder` |
 | Deterministic classification | `BusinessClassifier` |
 | Optional Gemini classification | `GeminiBusinessClassifier` and `AiBusinessClassifierManager` |
-| Search intent stabilization | `BusinessIntelligenceService` and `SearchProfileBuilder` |
+| Search-profile stabilization | `BusinessIntelligenceService` and `SearchProfileBuilder` |
 | Google Places access | `GooglePlacesService` |
-| Local and broader candidate search | `CompetitorSearchService` |
-| Gemini direct competitor discovery | `GeminiCompetitorDiscoveryService` |
+| Local and broader account search | `CompetitorSearchService` |
+| Gemini lookalike account discovery | `GeminiCompetitorDiscoveryService` |
 | Candidate enrichment | `CompetitorEnrichmentService` |
-| Relevance scoring and ranking | `CompetitorRelevanceScorer` |
+| Account fit scoring and ranking | `CompetitorRelevanceScorer` |
 | Pipeline orchestration | `CompetitorAnalysisService` |
 
-At a high level, the request flows through website and business-profile validation, profile construction, classification, search-profile generation, candidate discovery, scoring, deduplication, enrichment, and final manual review. External-service failures are handled at their boundaries so the application can use an appropriate fallback instead of substituting mock results.
+Several internal classes and session fields still use `Competitor*` names for backward compatibility. Their behavior now supports Account Intelligence. Renaming those identifiers is intentionally left for a focused refactor.
+
+At a high level, the request moves through website and Google Business validation, reference profile construction, classification, search-profile generation, candidate discovery, scoring, deduplication, enrichment, and manual review. External-service failures are handled at their boundaries so the application can use a supported fallback without substituting mock results.
+
+## Runtime behavior
+
+The live analysis shares a 24-second request budget and reserves time to persist the session and return the redirect. Provider calls use bounded connection and response timeouts. Independent Google searches and Place Details enrichment run in pools, and the pipeline stops expanding once it has enough strong matches. Partial enrichment failures do not discard otherwise usable accounts.
 
 ## External integrations
 
 ### Google Places API (New)
 
-Google Places powers business autocomplete, place details, and location-aware competitor search. A valid API key is required for live Google Business selection and Google-based discovery.
+Google Places powers reference-company autocomplete, place details, and location-aware account discovery. A valid API key is required for live Google Business selection and Google-based discovery.
 
 Relevant configuration:
 
@@ -75,7 +86,7 @@ Relevant configuration:
 
 ### Gemini
 
-Gemini provides structured business classification and direct competitor discovery for supported market types. It is optional for classification: when no key is configured, the application uses its deterministic classifier. Discovery paths that depend on Gemini degrade to supported alternatives or return a clear unavailable state.
+Gemini can provide structured business classification and lookalike account discovery. Classification is optional: when no key is configured, the application uses its deterministic classifier. Discovery paths that depend on Gemini fall back to supported Google Places behavior or return a clear unavailable state.
 
 Relevant configuration:
 
@@ -141,7 +152,7 @@ The application uses database-backed sessions, cache, and queues by default. Run
 Start from `.env.example`. The most important values are:
 
 ```dotenv
-APP_NAME="Competitor Intelligence"
+APP_NAME="Account Intelligence"
 APP_ENV=local
 APP_KEY=
 APP_DEBUG=true
@@ -192,4 +203,4 @@ Before publishing changes, review the Git diff and run a repository-wide secret 
 
 ## Project status
 
-This repository is maintained as an independent technical portfolio project. A dedicated visual redesign and public screenshots are planned separately; the current interface remains focused on preserving the working analysis flow.
+This repository is maintained as an independent technical portfolio project. It demonstrates a complete, responsive Account Intelligence workflow with real provider integrations, deterministic fallbacks, editable shortlist state, and bounded live-analysis runtime.

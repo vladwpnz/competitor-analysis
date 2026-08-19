@@ -1,11 +1,14 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "vladwpnz/competitor-intelligence",
+    "name": "vladwpnz/account-intelligence",
     "type": "project",
-    "description": "A Laravel application for AI-assisted competitor discovery and relevance ranking.",
+    "description": "A Laravel application for AI-assisted B2B lookalike account discovery and fit ranking.",
     "keywords": [
-        "competitor-intelligence",
-        "market-intelligence",
+        "account-intelligence",
+        "b2b-account-discovery",
+        "lookalike-companies",
+        "prospecting",
+        "fit-ranking",
         "laravel",
         "gemini",
         "google-places"

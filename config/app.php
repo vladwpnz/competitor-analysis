@@ -13,7 +13,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Competitor Intelligence'),
+    'name' => env('APP_NAME', 'Account Intelligence'),
 
     /*
     |--------------------------------------------------------------------------

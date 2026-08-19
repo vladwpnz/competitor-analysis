@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
-@section('title', 'Review your competitors')
-@section('meta_description', 'Review the ranked competitor shortlist, remove weak matches, and add competitors manually.')
+@section('title', 'Review recommended accounts')
+@section('meta_description', 'Review ranked lookalike accounts, inspect fit evidence, and build a prospect shortlist.')
 
 @section('content')
 
@@ -55,9 +55,9 @@
     );
 
     $discoverySourceLabel = match ($discoverySource) {
-        'ai_direct' => 'AI direct discovery',
+        'ai_direct' => 'AI lookalike discovery',
         'google_places_fallback' => 'Google Places fallback',
-        default => 'Google Places discovery',
+        default => 'Google Places account discovery',
     };
 
     $candidateCount = (int) data_get(
@@ -74,7 +74,7 @@
         <div class="container competitors-container">
             <nav class="workflow-progress" aria-label="Analysis progress">
                 <ol>
-                    <li class="is-complete"><span>1</span>Business</li>
+                    <li class="is-complete"><span>1</span>Reference</li>
                     <li class="is-current" aria-current="step"><span>2</span>Shortlist</li>
                     <li><span>3</span>Contact</li>
                 </ol>
@@ -84,13 +84,13 @@
                 <div class="competitors-heading">
                     <div>
                         <p class="workspace-kicker">Analysis complete</p>
-                        <h1>Review the ranked shortlist.</h1>
+                        <h1>Review your recommended accounts.</h1>
                         <p class="competitors-intro">
-                            Inspect why each business was ranked, then keep the competitors that belong in your final set.
+                            Inspect the fit evidence, then keep the accounts that belong in your prospect shortlist.
                         </p>
                     </div>
 
-                    <div class="shortlist-count" aria-label="Selected competitor count">
+                    <div class="shortlist-count" aria-label="Selected account count">
                         <strong id="competitor-count-heading">{{ count($topCompetitors) }}</strong>
                         <span>selected</span>
                     </div>
@@ -101,7 +101,7 @@
                         <p class="workspace-kicker">Analysis in progress</p>
                         <h1>Preparing your shortlist.</h1>
                         <p class="competitors-intro">
-                            The application is combining website, Google Business and market signals.
+                            The application is combining reference website, Google Business and market signals.
                         </p>
                     </div>
                 </div>
@@ -117,7 +117,7 @@
                 <section class="step2-business-section">
                     <div class="subject-heading">
                         <div>
-                            <span>Business analyzed</span>
+                            <span>Reference company</span>
                             <h2 title="{{ $googleBusiness }}">{{ $googleBusinessDisplay }}</h2>
                             <a href="{{ $website }}" target="_blank" rel="noreferrer">
                                 {{ $websiteDisplay }}
@@ -159,7 +159,7 @@
                             @if (!empty($websiteScanWarning))
                                 {{ $websiteScanWarning }}
                             @else
-                                Rankings use business type, services, query evidence and distance when geography matters.
+                                Fit ranking uses business type, services, search evidence and distance when geography matters.
                             @endif
                         </p>
                     </div>
@@ -168,9 +168,9 @@
                 <section class="step2-review-section">
                     <div class="step2-review-header">
                         <div>
-                            <h2>Ranked competitors</h2>
+                            <h2>Recommended accounts</h2>
                             <p>
-                                All listed businesses are selected. Remove a weak match or add a competitor you already know.
+                                All listed accounts are selected. Remove a weak match or add an account you already know.
                             </p>
                         </div>
 
@@ -181,7 +181,7 @@
                             aria-controls="add-competitor-modal"
                             aria-expanded="false"
                         >
-                            Add competitor
+                            Add account
                             <span aria-hidden="true">+</span>
                         </button>
                     </div>
@@ -200,12 +200,12 @@
                                         (string) data_get(
                                             $competitor,
                                             'displayName.text',
-                                            'Competitor'
+                                            'Account'
                                         )
                                     );
 
                                     if ($name === '') {
-                                        $name = 'Competitor';
+                                        $name = 'Account';
                                     }
 
                                     $placeId = trim(
@@ -226,7 +226,7 @@
                                         'primaryTypeDisplayName.text'
                                     );
 
-                                    /* Competitor category display refinement.
+                                    /* Account category display refinement.
                                      * Google may use a broad primary label such as
                                      * "Manufacturer" even when the same Place also
                                      * exposes supplier/distribution signals. We only
@@ -399,7 +399,7 @@
                                     }
 
                                     if (!is_string($category) || trim($category) === '') {
-                                        $category = 'Relevant business';
+                                        $category = 'Relevant account';
                                     }
 
                                     $rating = data_get(
@@ -499,7 +499,7 @@
                                         is_string($matchedQuery) => 'Matched search: '.$matchedQuery,
                                         $relevanceQuality !== '' =>
                                             \Illuminate\Support\Str::headline($relevanceQuality)
-                                            .' relevance across available signals',
+                                            .' fit across available signals',
                                         $isManualSelection =>
                                             'Added manually to the shortlist',
                                         default => 'Included from the current analysis',
@@ -615,22 +615,22 @@
 
                                     <div class="step2-score">
                                         @if (is_numeric($relevanceScore))
-                                            <span>Relevance</span>
+                                            <span>Fit score</span>
                                             <div>
                                                 <strong>{{ number_format((float) $relevanceScore, 0) }}</strong>
                                                 <small>/ 100</small>
                                             </div>
                                             <em>
                                                 {{ $relevanceQuality !== ''
-                                                    ? \Illuminate\Support\Str::headline($relevanceQuality).' relevance'
-                                                    : 'Ranked match' }}
+                                                    ? \Illuminate\Support\Str::headline($relevanceQuality).' fit'
+                                                    : 'Ranked account' }}
                                             </em>
                                         @else
                                             <span>Source</span>
                                             <strong class="step2-score-manual">
                                                 {{ $isManualSelection ? 'Manual add' : 'Ranked' }}
                                             </strong>
-                                            <em>Not rescored</em>
+                                            <em>No Fit score</em>
                                         @endif
                                     </div>
 
@@ -661,7 +661,7 @@
                                             type="button"
                                             class="step2-remove-button"
                                             data-remove-competitor
-                                            aria-label="Remove {{ $name }} from shortlist"
+                                            aria-label="Remove {{ $name }} from the prospect shortlist"
                                         >
                                             Remove
                                         </button>
@@ -675,8 +675,8 @@
                             id="step2-empty-selection"
                             @if (!empty($topCompetitors)) hidden @endif
                         >
-                            <strong>No competitors selected yet.</strong>
-                            <span>Add at least one competitor to continue.</span>
+                            <strong>No accounts selected yet.</strong>
+                            <span>Add at least one account to continue.</span>
                         </div>
 
                         <button
@@ -688,7 +688,7 @@
                         >
                             <span class="step2-add-another-icon" aria-hidden="true">+</span>
                             <span class="step2-add-another-copy">
-                                <strong>Add competitor</strong>
+                                <strong>Add account</strong>
                                 <small>Search by company name or official website</small>
                             </span>
                             <span class="step2-add-another-arrow" aria-hidden="true">↗</span>
@@ -711,10 +711,10 @@
                         </div>
                     @else
                         <div class="step2-empty">
-                            <strong>Competitor results are not available yet.</strong>
+                            <strong>Recommended accounts are not available yet.</strong>
                             <p>
-                                Once enough business signals are available,
-                                the most relevant competitor matches will appear here.
+                                Once enough reference-company signals are available,
+                                the strongest account matches will appear here.
                             </p>
                         </div>
                     @endif
@@ -746,12 +746,10 @@
             <span aria-hidden="true">×</span>
         </button>
 
-        <div class="step2-modal-kicker">Manual discovery</div>
-        <h2 id="add-competitor-title">Add competitor</h2>
+        <div class="step2-modal-kicker">Manual account discovery</div>
+        <h2 id="add-competitor-title">Add account</h2>
         <p id="add-competitor-description">
-            {{ $isDigitalGlobal
-                ? 'Search direct competitors by company name or official domain.'
-                : 'Search Google by business name or website, then choose the correct business.' }}
+            Search for a company by name or official website and add it to the current prospect shortlist.
         </p>
 
         <div class="step2-modal-search">
@@ -759,9 +757,10 @@
             <input
                 id="add-competitor-query"
                 type="text"
-                placeholder="Search for a competitor"
+                placeholder="Search for an account"
                 autocomplete="off"
                 spellcheck="false"
+                aria-describedby="add-competitor-description add-competitor-status"
             >
             <span
                 class="step2-modal-loader"
@@ -779,12 +778,12 @@
         <div
             class="step2-modal-results"
             id="add-competitor-results"
-            role="listbox"
+            aria-label="Matching accounts"
             hidden
         ></div>
 
         <div class="step2-google-attribution">
-            Source: {{ $isDigitalGlobal ? 'AI direct competitor search' : 'Google Maps' }}
+            Source: {{ $isDigitalGlobal ? 'AI account search' : 'Google Maps' }}
         </div>
     </section>
 </div>
@@ -812,9 +811,9 @@ document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.js-add-competitor')
     );
 
-    const searchEndpoint = @json(route('competitors.search'));
-    const addEndpoint = @json(route('competitors.add'));
-    const removeEndpoint = @json(route('competitors.remove'));
+    const searchEndpoint = @json(route('accounts.search'));
+    const addEndpoint = @json(route('accounts.add'));
+    const removeEndpoint = @json(route('accounts.remove'));
     const csrfToken = @json(csrf_token());
 
     let debounceTimer = null;
@@ -892,6 +891,17 @@ document.addEventListener('DOMContentLoaded', () => {
             'is-error',
             isError
         );
+
+        if (isError) {
+            operationStatus.setAttribute(
+                'role',
+                'alert'
+            );
+        } else {
+            operationStatus.removeAttribute(
+                'role'
+            );
+        }
     };
 
     const setModalStatus = (
@@ -907,6 +917,17 @@ document.addEventListener('DOMContentLoaded', () => {
             'is-error',
             isError
         );
+
+        if (isError) {
+            statusBox.setAttribute(
+                'role',
+                'alert'
+            );
+        } else {
+            statusBox.removeAttribute(
+                'role'
+            );
+        }
     };
 
     const showLoader = (show) => {
@@ -914,6 +935,13 @@ document.addEventListener('DOMContentLoaded', () => {
             loader.classList.toggle(
                 'is-visible',
                 show
+            );
+        }
+
+        if (queryInput) {
+            queryInput.setAttribute(
+                'aria-busy',
+                show ? 'true' : 'false'
             );
         }
     };
@@ -1048,7 +1076,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const heading = document.createElement('h3');
         heading.textContent =
-            competitor.name || 'Competitor';
+            competitor.name || 'Account';
         title.appendChild(heading);
         main.appendChild(title);
 
@@ -1057,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const category = document.createElement('span');
         category.textContent =
-            competitor.category || 'Relevant business';
+            competitor.category || 'Relevant account';
         meta.appendChild(category);
         main.appendChild(meta);
 
@@ -1119,7 +1147,7 @@ document.addEventListener('DOMContentLoaded', () => {
         scoreLabel.textContent =
             competitor.relevance_score !== null
             && competitor.relevance_score !== undefined
-                ? 'Relevance'
+                ? 'Fit score'
                 : 'Source';
         score.appendChild(scoreLabel);
 
@@ -1146,8 +1174,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 competitor.relevance_quality
                     ? competitor.relevance_quality
                         .replace(/_/g, ' ')
-                        + ' relevance'
-                    : 'Ranked match';
+                        + ' fit'
+                    : 'Ranked account';
             score.appendChild(scoreQuality);
         } else {
             const manual = document.createElement('strong');
@@ -1159,7 +1187,7 @@ document.addEventListener('DOMContentLoaded', () => {
             score.appendChild(manual);
 
             const scoreNote = document.createElement('em');
-            scoreNote.textContent = 'Not rescored';
+            scoreNote.textContent = 'No Fit score';
             score.appendChild(scoreNote);
         }
 
@@ -1232,8 +1260,8 @@ document.addEventListener('DOMContentLoaded', () => {
         remove.setAttribute(
             'aria-label',
             'Remove '
-                + (competitor.name || 'competitor')
-                + ' from shortlist'
+                + (competitor.name || 'account')
+                + ' from the prospect shortlist'
         );
         actions.appendChild(remove);
         row.appendChild(actions);
@@ -1253,7 +1281,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ) {
             resultsBox.hidden = true;
             setModalStatus(
-                'No new matching businesses found.'
+                'No new matching accounts found.'
             );
             return;
         }
@@ -1265,11 +1293,6 @@ document.addEventListener('DOMContentLoaded', () => {
             button.type = 'button';
             button.className =
                 'step2-modal-result';
-            button.setAttribute(
-                'role',
-                'option'
-            );
-
             const name =
                 document.createElement('strong');
             name.textContent =
@@ -1303,7 +1326,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         resultsBox.hidden = false;
         setModalStatus(
-            'Select the competitor you want to add.'
+            'Select the account you want to add.'
         );
     };
 
@@ -1344,7 +1367,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(
                     data.message
-                    || 'Competitor search is temporarily unavailable.'
+                    || 'Account search is temporarily unavailable.'
                 );
             }
 
@@ -1359,7 +1382,7 @@ document.addEventListener('DOMContentLoaded', () => {
             clearResults();
             setModalStatus(
                 error.message
-                || 'Competitor search is temporarily unavailable.',
+                || 'Account search is temporarily unavailable.',
                 true
             );
         } finally {
@@ -1379,7 +1402,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         addingPlaceId = placeId;
-        setModalStatus('Adding competitor…');
+        setModalStatus('Adding account...');
         showLoader(true);
 
         try {
@@ -1407,7 +1430,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) {
                 throw new Error(
                     data.message
-                    || 'Could not add that competitor.'
+                    || 'Could not add that account.'
                 );
             }
 
@@ -1426,12 +1449,12 @@ document.addEventListener('DOMContentLoaded', () => {
             closeModal();
             setOperationStatus(
                 data.message
-                || 'Competitor added to the shortlist.'
+                || 'Account added to the prospect shortlist.'
             );
         } catch (error) {
             setModalStatus(
                 error.message
-                || 'Could not add that competitor.',
+                || 'Could not add that account.',
                 true
             );
         } finally {
@@ -1492,7 +1515,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (!response.ok) {
                         throw new Error(
                             data.message
-                            || 'Could not remove that competitor.'
+                            || 'Could not remove that account.'
                         );
                     }
 
@@ -1500,13 +1523,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     syncState();
                     setOperationStatus(
                         data.message
-                        || 'Competitor removed from the shortlist.'
+                        || 'Account removed from the prospect shortlist.'
                     );
                 } catch (error) {
                     button.disabled = false;
                     setOperationStatus(
                         error.message
-                        || 'Could not remove that competitor.',
+                        || 'Could not remove that account.',
                         true
                     );
 

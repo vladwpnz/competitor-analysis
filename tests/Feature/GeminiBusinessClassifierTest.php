@@ -161,6 +161,22 @@ class GeminiBusinessClassifierTest extends TestCase
                     && str_contains(
                         (string) data_get(
                             $data,
+                            'system_instruction',
+                            ''
+                        ),
+                        'reference account'
+                    )
+                    && str_contains(
+                        (string) data_get(
+                            $data,
+                            'system_instruction',
+                            ''
+                        ),
+                        'does not need to sell a directly substitutable solution'
+                    )
+                    && str_contains(
+                        (string) data_get(
+                            $data,
                             'input',
                             ''
                         ),

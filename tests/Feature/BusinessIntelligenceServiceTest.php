@@ -736,12 +736,12 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
     }
 
-    public function test_ai_search_queries_are_limited_to_four_and_subject_name_is_removed(): void
+    public function test_ai_search_queries_are_limited_to_four_and_reference_company_name_is_removed(): void
     {
         $result = $this->industrialDistributorAiResult();
 
         $result['search_queries'] = [
-            'Example Industrial Co competitor',
+            'Example Industrial Co lookalike',
             'Motion Control Distributor',
             'Industrial Automation Distributor',
             'Fluid Power Distributor',
@@ -765,7 +765,7 @@ class BusinessIntelligenceServiceTest extends TestCase
         );
 
         $this->assertNotContains(
-            'Example Industrial Co competitor',
+            'Example Industrial Co lookalike',
             $classification[
                 'search_queries'
             ]

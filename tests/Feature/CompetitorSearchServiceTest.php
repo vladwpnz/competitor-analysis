@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class CompetitorSearchServiceTest extends TestCase
 {
-    public function test_local_search_removes_own_business_and_deduplicates_candidates(): void
+    public function test_local_search_removes_reference_company_and_deduplicates_candidates(): void
     {
         $google = Mockery::mock(GooglePlacesService::class);
 
@@ -110,7 +110,7 @@ class CompetitorSearchServiceTest extends TestCase
         $this->assertIsFloat($candidates[0]['_match']['distance_km']);
     }
 
-    public function test_closed_google_businesses_are_not_returned_as_competitors(): void
+    public function test_closed_google_businesses_are_not_returned_as_accounts(): void
     {
         $google = Mockery::mock(GooglePlacesService::class);
 
@@ -298,7 +298,7 @@ class CompetitorSearchServiceTest extends TestCase
         );
     }
 
-    public function test_it_can_exclude_own_business_by_name_without_place_id(): void
+    public function test_it_can_exclude_reference_company_by_name_without_place_id(): void
     {
         $google = Mockery::mock(GooglePlacesService::class);
 

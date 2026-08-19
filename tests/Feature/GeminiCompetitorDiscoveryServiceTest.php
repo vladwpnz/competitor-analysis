@@ -50,7 +50,7 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
         );
     }
 
-    public function test_it_requests_structured_direct_competitors_and_normalizes_output(): void
+    public function test_it_requests_structured_lookalike_accounts_and_normalizes_fit_scores(): void
     {
         config([
             'ai.gemini.api_key'
@@ -73,32 +73,38 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                                                 [
                                                     'name' => 'HubSpot',
                                                     'domain' => 'hubspot.com',
-                                                    'reason' => 'Subject company.',
+                                                    'reason' => 'Reference company.',
+                                                    'fit_score' => 100,
                                                 ],
                                                 [
                                                     'name' => 'Salesforce',
                                                     'domain' => 'https://www.salesforce.com/products/crm/',
-                                                    'reason' => 'Competes across CRM, sales, service and marketing software.',
+                                                    'reason' => 'Similar B2B software model across CRM, sales, service and marketing.',
+                                                    'fit_score' => 91,
                                                 ],
                                                 [
                                                     'name' => 'Zoho',
                                                     'domain' => 'zoho.com',
-                                                    'reason' => 'Competes with an integrated CRM and business software suite.',
+                                                    'reason' => 'Similar integrated CRM and business software suite.',
+                                                    'fit_score' => 83,
                                                 ],
                                                 [
                                                     'name' => 'Freshworks',
                                                     'domain' => 'freshworks.com',
-                                                    'reason' => 'Competes across CRM and customer service software.',
+                                                    'reason' => 'Similar B2B CRM and customer service software profile.',
+                                                    'fit_score' => 76,
                                                 ],
                                                 [
                                                     'name' => 'Salesforce',
                                                     'domain' => 'salesforce.com',
                                                     'reason' => 'Duplicate.',
+                                                    'fit_score' => 88,
                                                 ],
                                                 [
                                                     'name' => 'Invalid Agency',
                                                     'domain' => 'not a domain',
                                                     'reason' => 'Invalid domain.',
+                                                    'fit_score' => 40,
                                                 ],
                                             ],
                                         ],
@@ -125,17 +131,20 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                 [
                     'name' => 'Salesforce',
                     'domain' => 'salesforce.com',
-                    'reason' => 'Competes across CRM, sales, service and marketing software.',
+                    'reason' => 'Similar B2B software model across CRM, sales, service and marketing.',
+                    'fit_score' => 91,
                 ],
                 [
                     'name' => 'Zoho',
                     'domain' => 'zoho.com',
-                    'reason' => 'Competes with an integrated CRM and business software suite.',
+                    'reason' => 'Similar integrated CRM and business software suite.',
+                    'fit_score' => 83,
                 ],
                 [
                     'name' => 'Freshworks',
                     'domain' => 'freshworks.com',
-                    'reason' => 'Competes across CRM and customer service software.',
+                    'reason' => 'Similar B2B CRM and customer service software profile.',
+                    'fit_score' => 76,
                 ],
             ],
             $result
@@ -169,6 +178,15 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                         $data,
                         'response_format.schema.properties.competitors.maxItems'
                     ) === 8
+                    && in_array(
+                        'fit_score',
+                        data_get(
+                            $data,
+                            'response_format.schema.properties.competitors.items.required',
+                            []
+                        ),
+                        true
+                    )
                     && data_get(
                         $data,
                         'response_format.schema.additionalProperties'
@@ -193,7 +211,7 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
         );
     }
 
-    public function test_manual_search_returns_matching_direct_competitor_and_allows_empty_results(): void
+    public function test_manual_search_returns_matching_account_and_allows_empty_results(): void
     {
         config([
             'ai.gemini.api_key'
@@ -217,7 +235,8 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                                                     [
                                                         'name' => 'Pipedrive',
                                                         'domain' => 'pipedrive.com',
-                                                        'reason' => 'Direct sales CRM competitor.',
+                                                        'reason' => 'Similar sales CRM company.',
+                                                        'fit_score' => 78,
                                                     ],
                                                 ],
                                             ],
@@ -263,7 +282,8 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                 [
                     'name' => 'Pipedrive',
                     'domain' => 'pipedrive.com',
-                    'reason' => 'Direct sales CRM competitor.',
+                    'reason' => 'Similar sales CRM company.',
+                    'fit_score' => 78,
                 ],
             ],
             $service->search(
@@ -331,7 +351,8 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                                                     'name' => 'Salesforce',
                                                     'domain' => 'salesforce.com',
                                                     'reason'
-                                                        => 'Direct company-level competitor.',
+                                                        => 'Similar company-level B2B software profile.',
+                                                    'fit_score' => 86,
                                                 ],
                                             ],
                                         ],
@@ -383,7 +404,7 @@ class GeminiCompetitorDiscoveryServiceTest extends TestCase
                             'system_instruction',
                             ''
                         ),
-                        'company-level competitors'
+                        'company-level lookalikes'
                     )
                     && str_contains(
                         (string) data_get(

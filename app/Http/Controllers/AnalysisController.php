@@ -164,7 +164,7 @@ class AnalysisController extends Controller
                 );
 
                 $websiteScanWarning =
-                    'We could not read this website directly, so these matches are based mainly on the Google Business Profile.';
+                    'We could not read this website directly, so this account profile is based mainly on the reference Google Business Profile.';
             }
         }
 
@@ -172,7 +172,7 @@ class AnalysisController extends Controller
         $analysisResult = null;
 
         /*
-         * Never guess which Google Business belongs to the user.
+         * Never guess which Google Business belongs to the reference company.
          * Full analysis starts only after an explicit Autocomplete
          * selection gives us a stable Place ID.
          */
@@ -224,7 +224,7 @@ class AnalysisController extends Controller
                     return back()
                         ->withErrors([
                             'google_business'
-                                => 'Please select your actual Google Business Profile, not a street address or map location.',
+                                => 'Please select the reference company Google Business Profile, not a street address or map location.',
                         ])
                         ->withInput();
                 }
@@ -239,7 +239,7 @@ class AnalysisController extends Controller
                     return back()
                         ->withErrors([
                             'google_business'
-                                => 'The selected Google Business Profile appears to belong to a different website. Please choose the profile that matches your business.',
+                                => 'The selected Google Business Profile appears to belong to a different website. Choose the profile that matches the reference company website.',
                         ])
                         ->withInput();
                 }
@@ -310,7 +310,7 @@ class AnalysisController extends Controller
         ]);
 
         return redirect()
-            ->route('competitors');
+            ->route('accounts');
     }
 
     public function competitors(): View|RedirectResponse

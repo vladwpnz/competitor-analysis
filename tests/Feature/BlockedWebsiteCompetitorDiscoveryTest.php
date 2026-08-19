@@ -16,7 +16,7 @@ use Tests\TestCase;
 
 class BlockedWebsiteCompetitorDiscoveryTest extends TestCase
 {
-    public function test_blocked_corporate_website_still_uses_ai_website_discovery_before_google_places(): void
+    public function test_blocked_corporate_website_still_uses_ai_lookalike_discovery_before_google_places(): void
     {
         $businessIntelligence = Mockery::mock(
             BusinessIntelligenceService::class
@@ -131,27 +131,32 @@ class BlockedWebsiteCompetitorDiscoveryTest extends TestCase
                 [
                     'name' => 'TD Bank',
                     'domain' => 'td.com',
-                    'reason' => 'Direct Canadian retail and commercial banking competitor.',
+                    'reason' => 'Similar Canadian retail and commercial banking profile.',
+                    'fit_score' => 90,
                 ],
                 [
                     'name' => 'Scotiabank',
                     'domain' => 'scotiabank.com',
-                    'reason' => 'Direct Canadian banking competitor across consumer and business services.',
+                    'reason' => 'Similar Canadian banking model across consumer and business services.',
+                    'fit_score' => 86,
                 ],
                 [
                     'name' => 'BMO',
                     'domain' => 'bmo.com',
-                    'reason' => 'Direct Canadian banking competitor with overlapping financial products.',
+                    'reason' => 'Similar Canadian bank with overlapping financial products.',
+                    'fit_score' => 82,
                 ],
                 [
                     'name' => 'CIBC',
                     'domain' => 'cibc.com',
-                    'reason' => 'Direct Canadian retail and commercial banking competitor.',
+                    'reason' => 'Similar Canadian retail and commercial banking profile.',
+                    'fit_score' => 78,
                 ],
                 [
                     'name' => 'National Bank of Canada',
                     'domain' => 'nbc.ca',
-                    'reason' => 'Direct Canadian banking competitor for personal and business customers.',
+                    'reason' => 'Similar Canadian bank serving personal and business customers.',
+                    'fit_score' => 73,
                 ],
             ]);
 

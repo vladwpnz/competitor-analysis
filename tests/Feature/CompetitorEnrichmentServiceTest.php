@@ -10,7 +10,7 @@ use Tests\TestCase;
 
 class CompetitorEnrichmentServiceTest extends TestCase
 {
-    public function test_it_enriches_only_the_final_top_five_competitors(): void
+    public function test_it_enriches_only_the_final_top_five_accounts(): void
     {
         $google = Mockery::mock(
             GooglePlacesService::class

@@ -51,7 +51,7 @@ return [
         ),
 
         /*
-         * Direct digital competitor discovery can require a little more
+         * Direct digital lookalike discovery can require a little more
          * generation time than classification. These remain optional env
          * overrides and do not affect the existing classifier timeout.
          */

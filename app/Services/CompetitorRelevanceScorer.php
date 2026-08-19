@@ -232,7 +232,7 @@ class CompetitorRelevanceScorer
          * customer platform, marketing automation, etc.), require that
          * the candidate is connected to at least one of those specific
          * intents. This keeps generic software-development companies
-         * below actual product competitors without affecting broad tech
+         * below product-category lookalikes without affecting broad tech
          * searches that genuinely have only generic signals.
          */
         if (
@@ -268,7 +268,7 @@ class CompetitorRelevanceScorer
 
         /*
          * Query hits alone are not enough to make a local business
-         * a strong competitor. Google can return adjacent categories
+         * a strong account fit. Google can return adjacent categories
          * for a relevant query, so require intrinsic category/service
          * evidence for local markets. Focused broader technology
          * searches additionally require specific product-intent evidence.
@@ -1039,7 +1039,7 @@ class CompetitorRelevanceScorer
             : 0;
 
         /*
-         * CompetitorSearchService currently uses at most
+         * The deterministic search currently uses at most
          * four queries, so score against that same effective set.
          */
         $effectiveQueries = max(

@@ -58,7 +58,7 @@ class WebsiteScanner
                 );
 
                 $response = Http::withHeaders([
-                    'User-Agent' => 'CompetitorAnalysisBot/1.0',
+                    'User-Agent' => 'AccountIntelligenceBot/1.0',
                     'Accept' => 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.1',
                 ])
                     ->connectTimeout($connectTimeout)

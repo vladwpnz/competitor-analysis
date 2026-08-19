@@ -82,7 +82,7 @@ class BusinessProfileBuilder
 
             /*
              * These fields will become the input for the
-             * classification and competitor matching layer.
+             * classification and lookalike-account matching layer.
              */
             'classification_input' => [
                 'business_name' => $displayName,
